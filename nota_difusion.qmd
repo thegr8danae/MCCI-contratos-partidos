@@ -1,0 +1,118 @@
+---
+title: "Lo que revelan los contratos de los partidos políticos"
+subtitle: "Nota ejecutiva de difusión — MCCI · Proyecto Integrador 2026"
+authors: "Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez"
+date: "06-08-2026"
+lang: es
+format:
+  html:
+    toc: false
+    number-sections: false
+    theme:
+      light: [cosmo, styles/mcci-theme.scss]
+    fig-align: center
+    page-layout: article
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+::: {.mcci-hero}
+::: {.mcci-hero-eyebrow}
+Nota Ejecutiva · MCCI 2026
+:::
+
+# Lo que revelan los contratos de los partidos políticos
+
+::: {.mcci-hero-subtitle}
+Un análisis de inteligencia artificial aplicado a 15,118 contratos muestra que cada partido tiene una firma de gasto reconocible — y que esa firma puede usarse para detectar irregularidades.
+:::
+
+::: {.mcci-hero-stats}
+::: {.stat-item}
+[15,118]{.stat-number}
+[contratos analizados]{.stat-label}
+:::
+::: {.stat-item}
+[87.1%]{.stat-number}
+[precisión del modelo]{.stat-label}
+:::
+::: {.stat-item}
+[7]{.stat-number}
+[partidos · 2019–2025]{.stat-label}
+:::
+::: {.stat-item}
+[6×]{.stat-number}
+[sobre la predicción aleatoria]{.stat-label}
+:::
+:::
+:::
+
+---
+
+## 🏛️ El problema que este análisis aborda
+
+Los partidos políticos en México están obligados por ley a publicar los contratos de bienes y servicios que celebran. Sin embargo, esa información llega en formatos heterogéneos, con criterios inconsistentes y sin un mecanismo centralizado de revisión. El resultado es que miles de millones de pesos en gasto operativo de los institutos políticos quedan fuera del escrutinio sistemático que sí existe para el gasto gubernamental.
+
+**Mexicanos Contra la Corrupción y la Impunidad (MCCI)** recopiló, limpió y estandarizó esos registros para hacer posible una comparación ordenada: quién contrató qué, con quién, cuándo y por cuánto. Este proyecto tomó esos datos y les aplicó herramientas de ciencia de datos para responder una pregunta de fondo: **¿tienen los contratos de los partidos una estructura estadística propia, o el gasto es aleatorio e impredecible?**
+
+La respuesta tiene consecuencias directas para la política pública de fiscalización electoral.
+
+---
+
+## 🔍 La hipótesis y lo que encontramos
+
+La hipótesis de partida era directa: si cada partido tiene preferencias institucionales distintas —sobre el tamaño de los contratos que firma, el tipo de proveedor que prefiere y el momento del año en que gasta— entonces un modelo de clasificación debería poder identificar al partido responsable de cada contrato a partir de esas características, sin necesidad de leer el nombre del partido en ningún campo.
+
+Los datos lo confirmaron. Un modelo de Random Forest entrenado con el 75% de los contratos **identificó correctamente el partido responsable en el 87.1% de los casos del conjunto de prueba**, un resultado que es 6.1 veces mejor que la predicción aleatoria (que en un problema con 7 partidos acertaría solo el 14%). El área bajo la curva ROC —una medida de qué tan bien el modelo distingue entre partidos— alcanzó 0.978 sobre 1.0 posible.
+
+---
+
+## 💡 Los cuatro hallazgos concretos
+
+**1. El monto del contrato es el predictor más poderoso.** El modelo descubrió que cada partido opera en rangos de precio sistemáticamente distintos. Algunos institutos firman predominantemente contratos de mediana escala (entre 100,000 y 500,000 pesos); otros se concentran en contratos de alto valor o en micropagos por servicios específicos. Esa distribución de montos es suficientemente consistente para identificar al firmante.
+
+**2. Dos partidos concentran más de la mitad de los contratos.** El PVEM registró 4,055 contratos (26.8% del total) y Movimiento Ciudadano, 3,714 (24.6%). Juntos suman el 51.4% del universo analizado. Morena, en cambio, aparece con 1,009 contratos (6.7%), una cifra llamativamente baja para un partido que gobernó el país durante la mayor parte del período. Esto podría indicar diferencias en el nivel de reporte o cumplimiento de la obligación de transparencia.
+
+**3. El calendario de gasto varía por partido.** El año de contratación y el mes de firma son los segundos y terceros predictores en importancia. Los patrones de cierre de ejercicio fiscal —cuándo y cuánto se concentra el gasto en diciembre— difieren entre institutos políticos de manera suficientemente consistente para que el modelo los aproveche como señal.
+
+**4. El tipo de proveedor también varía.** Algunos partidos contratan predominantemente personas morales (empresas), mientras que otros recurren con mayor frecuencia a personas físicas. Esta división refleja distintas concepciones del gasto operativo y, potencialmente, distintas redes de relaciones con el sector privado.
+
+---
+
+## ⚖️ Por qué esto importa para la fiscalización
+
+El resultado del modelo tiene una implicación directa para los organismos de supervisión: **los contratos tienen identidad estadística, y esa identidad puede auditarse de forma automatizada**. Una herramienta de este tipo permitiría al Instituto Nacional Electoral (INE) o a la Auditoría Superior de la Federación identificar, de manera proactiva y a bajo costo, contratos cuyas características sean estadísticamente atípicas para el partido que los firmó.
+
+Hoy, la auditoría de contratos de partidos es mayormente reactiva: se investiga cuando hay una denuncia o una señal evidente de irregularidad. Un sistema de análisis predictivo como el que este proyecto demuestra posible permitiría un enfoque diferente: detectar contratos que se desvíen del patrón histórico del partido antes de que el ejercicio fiscal cierre, concentrar los recursos de supervisión donde el riesgo estadístico es mayor, y reducir la discrecionalidad en la selección de qué contratos auditar.
+
+No es una herramienta para condenar; es una herramienta para priorizar. La decisión de investigar sigue siendo humana y jurídica. El modelo solo señala dónde conviene mirar primero.
+
+---
+
+## ⚠️ Lo que este análisis no dice — y lo que sigue pendiente
+
+Este análisis tiene límites que cualquier tomador de decisiones debe conocer antes de actuar sobre sus hallazgos.
+
+**El modelo no detecta corrupción.** Un contrato que el algoritmo clasifica como "atípico para el partido X" puede tener una explicación completamente legítima: un proveedor nuevo, un proyecto excepcional, un cambio de política interna. La estadística genera hipótesis; el derecho y la auditoría las verifican.
+
+**Los datos tienen sesgos de registro.** Los 618 contratos que no pudieron ser asignados a ningún partido quedaron excluidos del análisis. La subrepresentación de Morena —el partido gobernante durante la mayor parte del período— sugiere que el universo analizado no es neutral, y que los patrones detectados para ese partido deben interpretarse con cautela adicional.
+
+**El período incluye la pandemia.** Los contratos de 2020 y 2021 reflejan condiciones excepcionales de gasto que alteraron los patrones históricos de todos los institutos. Un modelo entrenado sobre este período puede haber aprendido señales coyunturales, no estructurales.
+
+---
+
+## 📌 Recomendación de acción concreta
+
+**El INE debe implementar un formato único y obligatorio de reporte de contratos, con campos estandarizados y actualización mensual.**
+
+El obstáculo técnico que hace difícil el análisis comparado no es la falta de datos, sino su heterogeneidad. Con un formato común, las herramientas desarrolladas en este proyecto podrían integrarse como parte del sistema de alertas tempranas de la autoridad electoral —sin costo marginal significativo, sin necesidad de nuevas facultades legales y con un impacto directo en la calidad de la supervisión del gasto de los partidos.
+
+El análisis de datos no reemplaza la auditoría. La hace más eficiente.
+
+---
+
+::: {.callout-note}
+**Sobre este análisis.** Los datos provienen de MCCI (15,118 contratos, 7 partidos, 2019–2025). El modelo es un Random Forest entrenado con tidymodels en R, evaluado sobre el 25% de los contratos que no participaron en el entrenamiento. Código y datos disponibles en el repositorio del proyecto. Asistencia de IA: Claude (Anthropic), para generación de código R y estructura del análisis. Para el informe técnico completo, consulta los notebooks del repositorio.
+:::

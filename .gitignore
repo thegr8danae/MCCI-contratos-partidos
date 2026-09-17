@@ -1,0 +1,44 @@
+# .gitignore para proyecto MCCI en R/Quarto
+
+# --- R específico ---
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj.user
+.Ruserdata
+
+# Cache de Quarto/knitr
+*_files/
+*_cache/
+.quarto/
+_site/
+
+# Archivos temporales de R
+*.tmp
+*.bak
+
+# Archivos de datos procesados (no versionar datos derivados)
+datos/procesados/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Entornos virtuales / renv
+renv/library/
+renv/.cache/
+renv/staging/
+
+# Logs
+*.log
+
+# Carpeta _site (output alternativo de Quarto, no se versiona)
+_site/
+
+/.quarto/
+
+**/*.quarto_ipynb
+
+# El sitio renderizado sí se publica (GitHub Pages)
+!docs/**/*_files/

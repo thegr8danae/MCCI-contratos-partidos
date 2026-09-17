@@ -1,0 +1,137 @@
+---
+title: "MCCI — Contratos de Partidos Políticos"
+lang: es
+---
+
+::: {.mcci-hero}
+
+<div style="text-align:center;margin-bottom:1.2rem;padding-top:0.5rem;">
+<img src="images/logo-mcci.svg" alt="MCCI" style="height:60px;max-width:220px;object-fit:contain;" />
+</div>
+
+::: {.mcci-hero-eyebrow}
+Proyecto Integrador · Análisis de Datos Públicos
+:::
+
+# Contratos de partidos políticos en México
+
+::: {.mcci-hero-subtitle}
+¿Puede la inteligencia artificial detectar a qué partido político pertenece un contrato, solo con ver sus características? Analizamos **15,118 contratos** de siete partidos (2019–2025) con herramientas de ciencia de datos reproducible en R y Quarto.
+:::
+
+::: {.mcci-hero-stats}
+::: {.stat-item}
+[15,118]{.stat-number}
+[contratos analizados]{.stat-label}
+:::
+::: {.stat-item}
+[7]{.stat-number}
+[partidos políticos]{.stat-label}
+:::
+::: {.stat-item}
+[2019–2025]{.stat-number}
+[período cubierto]{.stat-label}
+:::
+::: {.stat-item}
+[87.1%]{.stat-number}
+[exactitud del modelo]{.stat-label}
+:::
+:::
+:::
+
+---
+
+## 🏛️ El problema público
+
+Los partidos políticos en México reciben financiamiento público y están obligados a reportar los contratos de bienes y servicios que celebran. Sin embargo, esta información llega en formatos heterogéneos, sin una estructura que permita el análisis comparado entre institutos políticos ni la detección automática de patrones de gasto.
+
+**El problema concreto:** no existe hoy un sistema que permita a la autoridad electoral identificar, de manera proactiva y sistemática, contratos cuyas características sean estadísticamente atípicas para el partido que los firmó. La fiscalización es reactiva: se investiga cuando hay una denuncia.
+
+---
+
+## 🔍 Hipótesis de valor
+
+> **Hipótesis:** Si el patrón de gasto de cada partido político es sistemáticamente distinto —en montos, tipos de proveedor y temporalidad— entonces es posible usar esas diferencias para construir un modelo predictivo que identifique contratos atípicos y priorice la revisión por parte de la autoridad.
+
+Esta hipótesis es medible: si un modelo de clasificación entrenado solo con características observables del contrato (monto, tipo de persona, mes de firma, tipo de bien) puede predecir el partido responsable con una exactitud significativamente superior al azar, queda demostrado que los contratos llevan impresa la identidad del partido que los asigna.
+
+**¿Por qué la analítica de datos?** Porque el volumen de contratos —más de 15,000 en el período analizado— hace imposible la revisión manual sistemática. Un modelo estadístico puede procesar todos los contratos simultáneamente, asignar un grado de "atipicidad" a cada uno y entregar a los auditores una lista priorizada. Eso convierte la analítica de datos en una herramienta directamente accionable para la política pública de transparencia y fiscalización.
+
+---
+
+## 💡 Lo que encontramos
+
+::: {.section-label}
+Descubrimientos del análisis · Datos reales del dataset MCCI
+:::
+
+::: {.mcci-cards}
+
+::: {.mcci-card}
+[PVEM: 26.8%]{.card-number}
+[partido con más contratos]{.card-label}
+[4,055 de 15,118 contratos totales · El doble que PAN (15.5%)]{.card-sublabel}
+:::
+
+::: {.mcci-card .card-navy}
+[51.4%]{.card-number}
+[concentración en 2 partidos]{.card-label}
+[PVEM + MC concentran más de la mitad del universo analizado]{.card-sublabel}
+:::
+
+::: {.mcci-card .card-gold}
+[87.1%]{.card-number}
+[exactitud del modelo RF]{.card-label}
+[Predice el partido correcto en 8.7 de cada 10 contratos · AUC: 0.978]{.card-sublabel}
+:::
+
+::: {.mcci-card .card-teal}
+[6.1×]{.card-number}
+[sobre predicción aleatoria]{.card-label}
+[Línea base aleatoria: 14.3% · El modelo: 87.1%]{.card-sublabel}
+:::
+
+:::
+
+### Detalle de los hallazgos
+
+**Concentración desproporcionada.** El PVEM y Movimiento Ciudadano juntos concentran el 51.4% de los contratos, mientras que el PRI tiene solo 788 registros (5.2%) y Morena apenas 1,009 (6.7%), a pesar de ser el partido gobernante durante la mayor parte del período 2019–2025. Esta asimetría en el reporte sugiere diferencias importantes en el cumplimiento de la obligación de transparencia entre partidos.
+
+**La firma del gasto existe.** El modelo aprende que cada partido tiene una "firma" en su gasto: el monto del contrato (`log_costo`) es el predictor más importante, seguido del año de contratación y el mes de firma. Esto indica que los partidos operan en rangos de precio distintos y con calendarios de gasto diferenciados.
+
+**El tipo de proveedor varía por partido.** El 72% de los contratos en el dataset corresponde a personas morales (empresas). Sin embargo, la proporción varía significativamente por partido: algunos institutos contratan predominantemente empresas para servicios de comunicación y logística, mientras que otros recurren más a personas físicas para consultoría y servicios profesionales.
+
+**Patrones estacionales reconocibles.** El mes de firma y la variable de cierre de ejercicio fiscal (diciembre) son señales estadísticamente distinguibles entre partidos, lo que refleja diferencias en cómo cada instituto gestiona su presupuesto operativo a lo largo del año.
+
+**Contratos atípicos — dónde investigar.** La utilidad real del modelo no está en predecir contratos individuales con certeza, sino en señalar outliers: contratos cuyas características predicen un partido diferente al que aparece como adjudicador. Esos contratos son los candidatos naturales para revisión adicional.
+
+---
+
+## 📂 ¿Qué encontrarás en este repositorio?
+
+| Sección | Contenido |
+|---|---|
+| [Exploración de datos](notebooks/01_exploracion.qmd) | Carga, estructura y calidad de los dos datasets MCCI |
+| [Análisis de contratos](notebooks/02_contratos_montos.qmd) | Distribuciones univariadas y bivariadas del gasto por partido |
+| [Modelo de Machine Learning](notebooks/02_prediccion_partido_proveedor.qmd) | Clasificación multiclase con Árbol de Decisión y Random Forest |
+| [Diccionario de datos](referencias/diccionario_datos.qmd) | Descripción detallada de las 28–30 variables del dataset |
+| [Nota de difusión](nota_difusion.qmd) | Resumen ejecutivo para tomadores de decisiones |
+
+---
+
+## 🗄️ Datasets utilizados
+
+| Archivo | Filas | Columnas | Descripción |
+|---|---|---|---|
+| `contratos.csv` | 15,736 | 28 | Dataset completo de contratos (sin columna `partido` estandarizada) |
+| `contratos_montos.csv` | 15,118 | 30 | Dataset con partido estandarizado · usado para el modelado |
+
+La diferencia de 618 registros entre ambos datasets representa contratos que no pudieron ser asignados a un partido específico o que carecían de costo registrado. Esta exclusión introduce un sesgo de cobertura que se discute en detalle en la sección de [limitaciones éticas del modelo](notebooks/02_prediccion_partido_proveedor.qmd#interpretación-y-limitaciones-éticas).
+
+---
+
+::: {.callout-note}
+**Datos:** Mexicanos Contra la Corrupción y la Impunidad (MCCI) · [contralacorrupcion.mx](https://contralacorrupcion.mx)
+**Código:** R · tidyverse · tidymodels · Quarto · [Ver repositorio en GitHub](https://github.com/thegr8danae/MCCI-contratos-partidos)
+**Asistencia de IA:** Claude (Anthropic) · Ver [declaracion_ia.md](declaracion_ia.md)
+:::

@@ -1,0 +1,70 @@
+# 📖 Diccionario de Datos
+
+**Proyecto:** MCCI — Contratos de Partidos Políticos  
+**Fuente:** Mexicanos Contra la Corrupción y la Impunidad  
+**Última actualización:** mayo 2026
+
+---
+
+## 📋 Variables compartidas (ambos datasets)
+
+| # | Variable | Tipo de dato | Ejemplo | Descripción |
+|---|---|---|---|---|
+| 1 | `id` | Entero | `1698071028` | Identificador único del contrato. Sirve como llave para cruzar ambos datasets. |
+| 2 | `ano` | Entero | `2020` | Año del periodo de reporte. |
+| 3 | `fecha_inicio_periodo` | Fecha | `2020-01-01` | Inicio del trimestre o periodo de reporte. |
+| 4 | `fecha_fin_periodo` | Fecha | `2020-03-31` | Fin del trimestre o periodo de reporte. |
+| 5 | `tipo_contrato` | Categórica | `Adquisición` | Naturaleza jurídica del contrato. |
+| 6 | `tipo_persona` | Categórica | `Física`, `Moral` | Indica si el proveedor es persona física (individuo) o moral (empresa). |
+| 7 | `fisica_nombre` | Texto | `Juan` | Nombre de pila del proveedor (persona física). |
+| 8 | `fisica_apellido1` | Texto | `García` | Primer apellido (persona física). |
+| 9 | `fisica_apellido2` | Texto | `López` | Segundo apellido (persona física). |
+| 10 | `moral_razon` | Texto | `IQSEC, S.A. DE C.V.` | Razón social del proveedor (persona moral). |
+| 11 | `fecha_firma` | Fecha | `2020-10-19` | Fecha de firma del contrato. |
+| 12 | `tema` | Categórica | `Prestación` | Categoría temática del contrato. |
+| 13 | `descripcion` | Texto libre | `SERVICIO DE LIMPIEZA...` | Descripción del objeto del contrato. |
+| 14 | `url` | URL | `https://...pdf` | Enlace al documento PDF oficial. |
+| 15 | `fecha_inicio_vigencia` | Fecha | `2020-10-19` | Inicio de la vigencia del contrato. |
+| 16 | `fecha_fin_vigencia` | Fecha | `2020-12-31` | Fin de la vigencia del contrato. |
+| 17 | `alcance` | Texto | `Compraventa` | Alcance o modalidad de la contratación. |
+| 18 | `costo` | Numérico (MXN) | `262275000.0` | Monto en pesos mexicanos. Puede ser 0 en contratos abiertos. |
+| 19 | `area` | Texto | `Secretaría de Finanzas` | Área interna del partido responsable. |
+| 20 | `fecha_actualizacion` | Fecha | `2020-12-31` | Última actualización del registro. |
+| 21 | `nota` | Texto libre | — | Observaciones adicionales. |
+| 22 | `partido_archivo` | Texto | `Morena` | Nombre del partido como aparece en el archivo fuente. |
+| 23 | `ano_archivo` | Numérico | `2020.0` | Año del archivo fuente. |
+| 24 | `archivo` | Texto | `bd_bienes_y_servicios_MORENA_2020` | Nombre del archivo fuente original. |
+| 25 | `fecha_validacion` | Fecha | `2021-01-10` | Fecha de validación por MCCI. |
+| 26 | `nom_fisica` | Texto | `Juan García López` | Nombre completo concatenado (persona física). |
+| 27 | `nom_fisica_homo` | Texto | `JUAN GARCIA LOPEZ` | Nombre homologado para deduplicación. |
+| 28 | `moral_razon_homo` | Texto | `IQSEC SA DE CV` | Razón social homologada para deduplicación. |
+
+---
+
+## ➕ Variables exclusivas de `contratos_montos.csv`
+
+| # | Variable | Tipo de dato | Ejemplo | Descripción |
+|---|---|---|---|---|
+| 29 | `H1` | Entero | `13199` | Índice de fila del archivo fuente. **Variable auxiliar, no usar en análisis**. |
+| 30 | `partido` | Categórica | `Morena`, `PAN` | Nombre estandarizado del partido político. Principal diferencia con `contratos.csv`. |
+
+---
+
+## 📝 Notas metodológicas
+
+### ¿Por qué hay menos filas en `contratos_montos.csv`?
+
+`contratos_montos.csv` tiene **618 filas menos** que `contratos.csv`. Las posibles razones son:
+
+1. Registros sin partido identificable
+2. Contratos con `costo == 0` o vacío que fueron filtrados
+3. Depuración de duplicados en el proceso de homologación
+
+> 💡 **Recomendación**: Al comparar resultados, siempre reporta cuál archivo estás utilizando.
+
+### Calidad de los datos
+
+- `costo` puede ser `0.0` en contratos abiertos donde el monto no se fija al firmar.
+- Las columnas de fecha pueden tener `NA` en algunos registros.
+- `fisica_nombre/apellido1/apellido2` estarán vacíos cuando `tipo_persona == "Moral"`.
+- `descripcion` puede contener caracteres especiales y saltos de línea.

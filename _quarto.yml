@@ -1,0 +1,85 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "MCCI · Contratos de Partidos"
+  description: "Análisis de datos de contrataciones públicas de partidos políticos en México — Mexicanos Contra la Corrupción y la Impunidad."
+  favicon: "styles/favicon.ico"
+
+  navbar:
+    logo: "images/logo-mcci.svg"
+    logo-alt: "MCCI"
+    logo-href: "https://contralacorrupcion.mx"
+    title: false
+    background: "#0d1b2a"
+    foreground: "#ffffff"
+    search: true
+    left:
+      - text: "Inicio"
+        href: index.qmd
+      - text: "Exploración"
+        href: notebooks/01_exploracion.qmd
+      - text: "Análisis"
+        href: notebooks/02_contratos_montos.qmd
+      - text: "Machine Learning"
+        href: notebooks/02_prediccion_partido_proveedor.qmd
+      - text: "Diccionario"
+        href: referencias/diccionario_datos.qmd
+      - text: "Nota Ejecutiva"
+        href: nota_difusion.qmd
+    right:
+      - icon: github
+        href: https://github.com/thegr8danae/MCCI-contratos-partidos
+        aria-label: "Repositorio en GitHub"
+
+  page-footer:
+    background: "#0d1b2a"
+    foreground: "#94a3b8"
+    border: true
+    left: |
+      Datos: **[Mexicanos Contra la Corrupción y la Impunidad](https://contralacorrupcion.mx/)** · Material educativo
+    center: "MCCI · Contratos de Partidos Políticos · 2026"
+    right: |
+      [Quarto](https://quarto.org) · [tidymodels](https://www.tidymodels.org)
+
+  open-graph:
+    title: "MCCI — Contratos de Partidos Políticos"
+    description: "Análisis de datos de contratos de partidos políticos en México"
+    image: "https://contralacorrupcion.mx/wp-content/themes/mcci-2025/assets/images/og-mcci.jpg"
+
+  twitter-card:
+    title: "MCCI — Contratos de Partidos"
+    description: "Análisis de datos de contratos de partidos políticos en México"
+    creator: "@MCCI_Mexico"
+
+format:
+  html:
+    theme:
+      light: [cosmo, styles/mcci-theme.scss]
+    toc: true
+    toc-depth: 3
+    toc-title: "Contenido"
+    number-sections: true
+    code-fold: true
+    code-summary: "Ver código"
+    code-tools: true
+    code-copy: true
+    highlight-style: github-dark
+    lang: es
+    date-format: "D [de] MMMM [de] YYYY"
+    fig-align: center
+    fig-width: 9
+    fig-height: 6
+    fig-dpi: 150
+    smooth-scroll: true
+    anchor-sections: true
+    page-layout: article
+
+execute:
+  echo: true
+  warning: false
+  message: false
+  freeze: auto
+
+editor: visual

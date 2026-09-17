@@ -1,0 +1,802 @@
+/*============================================================
+  MCCI — Tema personalizado para Quarto
+  Inspirado en contralacorrupcion.mx
+  Paleta: navy #0d1b2a · rojo #b71c1c · blanco #ffffff
+============================================================*/
+
+/*-- scss:defaults --*/
+
+// ── Fuentes ──────────────────────────────────────────────
+$web-font-path: "https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap";
+
+$font-family-sans-serif:  'Source Sans 3', 'Segoe UI', Arial, sans-serif;
+$font-family-monospace:   'JetBrains Mono', 'Courier New', monospace;
+$headings-font-family:    'Barlow Condensed', 'Impact', sans-serif;
+$headings-font-weight:    700;
+$headings-letter-spacing: -0.5px;
+
+// ── Colores MCCI ─────────────────────────────────────────
+$mcci-navy:       #0d1b2a;
+$mcci-navy-med:   #162032;
+$mcci-navy-light: #1e3a5f;
+$mcci-red:        #b71c1c;
+$mcci-red-light:  #e53935;
+$mcci-red-pale:   #fdecea;
+$mcci-gold:       #e65100;
+$mcci-gold-light: #ff8f00;
+$mcci-teal:       #00695c;
+$mcci-white:      #ffffff;
+$mcci-light:      #f4f6f9;
+$mcci-gray-100:   #f8fafc;
+$mcci-gray-200:   #eef2f7;
+$mcci-gray-400:   #94a3b8;
+$mcci-gray-600:   #64748b;
+$mcci-gray-800:   #1e293b;
+
+// ── Bootstrap overrides ───────────────────────────────────
+$primary:         $mcci-red;
+$secondary:       $mcci-navy;
+$body-bg:         $mcci-white;
+$body-color:      $mcci-gray-800;
+$link-color:      $mcci-red;
+$link-hover-color: darken($mcci-red, 10%);
+
+$font-size-base:  1.05rem;
+$line-height-base: 1.75;
+
+$headings-color:  $mcci-navy;
+$h1-font-size:    2.6rem;
+$h2-font-size:    2.0rem;
+$h3-font-size:    1.55rem;
+$h4-font-size:    1.25rem;
+
+$border-radius:   0.375rem;
+$border-color:    $mcci-gray-200;
+
+$code-bg:         #0f172a;
+$code-color:      #e2e8f0;
+$pre-bg:          #0f172a;
+
+// ── Navbar ────────────────────────────────────────────────
+$navbar-bg:       $mcci-navy;
+$navbar-fg:       $mcci-white;
+$navbar-hl:       $mcci-red-light;
+
+// ── Callouts ─────────────────────────────────────────────
+$callout-color-note:      $mcci-navy-light;
+$callout-color-tip:       $mcci-teal;
+$callout-color-warning:   $mcci-gold;
+$callout-color-important: $mcci-red;
+
+/*-- scss:rules --*/
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  0. Google Fonts import
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  1. Base & Typography
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+body {
+  font-family: $font-family-sans-serif;
+  font-size: $font-size-base;
+  color: $mcci-gray-800;
+  background: $mcci-white;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: $headings-font-family;
+  font-weight: $headings-font-weight;
+  color: $mcci-navy;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+h1 { font-size: 2.8rem; text-transform: uppercase; }
+h2 { font-size: 2.1rem; }
+h3 {
+  font-size: 1.55rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 3px solid $mcci-red;
+  margin-bottom: 1.2rem;
+  display: inline-block;
+}
+
+p { margin-bottom: 1.1rem; }
+
+a {
+  color: $mcci-red;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+  &:hover { color: darken($mcci-red, 12%); text-decoration: underline; }
+}
+
+strong { color: $mcci-navy; }
+
+hr {
+  border: none;
+  border-top: 2px solid $mcci-gray-200;
+  margin: 2.5rem 0;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  2. Navbar
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.navbar {
+  background-color: $mcci-navy !important;
+  padding: 0.6rem 1.5rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+  border-bottom: 3px solid $mcci-red;
+
+  .navbar-brand {
+    font-family: $headings-font-family;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: $mcci-white !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    span.mcci-tag {
+      background: $mcci-red;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin-right: 6px;
+      font-size: 0.85rem;
+    }
+  }
+
+  .navbar-nav .nav-link {
+    color: rgba(255,255,255,0.85) !important;
+    font-family: $font-family-sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.02em;
+    padding: 0.5rem 0.9rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+
+    &:hover {
+      color: $mcci-white !important;
+      background: rgba(255,255,255,0.1);
+    }
+
+    &.active {
+      color: $mcci-white !important;
+      background: $mcci-red;
+    }
+  }
+
+  // GitHub icon
+  .navbar-nav .nav-link[href*="github"] {
+    &::before { content: ""; }
+    opacity: 0.8;
+    &:hover { opacity: 1; background: transparent; }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  3. Page layout & content wrapper
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#quarto-content {
+  padding-top: 0 !important;
+}
+
+.page-columns {
+  max-width: 1200px;
+}
+
+main.content {
+  padding: 2rem 1rem 3rem;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  4. Hero section (index page)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.mcci-hero {
+  background: linear-gradient(135deg, $mcci-navy 0%, $mcci-navy-light 50%, #1a3a6b 100%);
+  color: $mcci-white;
+  padding: 5rem 2rem 4rem;
+  margin: -1rem -2rem 3rem;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: $mcci-red;
+  }
+
+  .mcci-hero-eyebrow {
+    display: inline-block;
+    background: $mcci-red;
+    color: white;
+    font-family: $headings-font-family;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 3px;
+    margin-bottom: 1.2rem;
+  }
+
+  h1 {
+    font-family: $headings-font-family;
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: $mcci-white;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.05;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  .mcci-hero-subtitle {
+    font-size: 1.2rem;
+    color: rgba(255,255,255,0.8);
+    font-weight: 300;
+    max-width: 700px;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+  }
+
+  .mcci-hero-stats {
+    display: flex;
+    gap: 2.5rem;
+    flex-wrap: wrap;
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255,255,255,0.15);
+
+    .stat-item {
+      text-align: center;
+
+      .stat-number {
+        display: block;
+        font-family: $headings-font-family;
+        font-size: 2.4rem;
+        font-weight: 800;
+        color: $mcci-white;
+        line-height: 1;
+      }
+
+      .stat-label {
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.65);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-top: 4px;
+      }
+    }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  5. Metric / KPI cards
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.mcci-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  margin: 2rem 0;
+}
+
+.mcci-card {
+  background: $mcci-white;
+  border-radius: 8px;
+  border: 1px solid $mcci-gray-200;
+  padding: 1.5rem 1.75rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: $mcci-red;
+  }
+
+  &.card-navy::before  { background: $mcci-navy; }
+  &.card-gold::before  { background: $mcci-gold-light; }
+  &.card-teal::before  { background: $mcci-teal; }
+
+  .card-number {
+    font-family: $headings-font-family;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: $mcci-navy;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+
+  .card-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: $mcci-gray-600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  .card-sublabel {
+    font-size: 0.78rem;
+    color: $mcci-gray-400;
+    margin-top: 0.2rem;
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  6. Section badges / category tags
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.mcci-badge {
+  display: inline-block;
+  font-family: $headings-font-family;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 3px;
+  background: $mcci-red;
+  color: $mcci-white;
+  margin-bottom: 0.5rem;
+
+  &.badge-navy  { background: $mcci-navy; }
+  &.badge-gold  { background: $mcci-gold-light; color: $mcci-navy; }
+  &.badge-teal  { background: $mcci-teal; }
+  &.badge-light { background: $mcci-gray-200; color: $mcci-gray-800; }
+}
+
+// Section intro label (before h2)
+.section-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: $mcci-red;
+  margin-bottom: 0.4rem;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  7. Tables
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93rem;
+  margin-bottom: 2rem;
+
+  // Bootstrap 5 CSS variable overrides — prevents dark-mode from changing cell colors
+  --bs-table-bg: #FFFFFF;
+  --bs-table-color: #1A1A1A;
+  --bs-table-striped-bg: #F4F4F4;
+  --bs-table-striped-color: #1A1A1A;
+  --bs-table-hover-bg: #E8E8E8;
+  --bs-table-hover-color: #1A1A1A;
+  --bs-table-active-bg: #E8E8E8;
+  --bs-table-active-color: #1A1A1A;
+  --bs-table-accent-bg: transparent;
+  --bs-table-border-color: #eef2f7;
+
+  thead tr {
+    background: #1A1A1A !important;
+    color: #FFFFFF !important;
+
+    th {
+      padding: 0.75rem 1rem;
+      font-family: $headings-font-family;
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: none;
+      background-color: #1A1A1A !important;
+      color: #FFFFFF !important;
+      box-shadow: none !important;
+    }
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #eef2f7;
+    transition: background 0.15s;
+
+    // Fondo blanco explícito en todas las celdas — anula dark mode y Bootstrap striping
+    td, th {
+      padding: 0.65rem 1rem;
+      vertical-align: middle;
+      background-color: #FFFFFF !important;
+      color: #1A1A1A !important;
+      box-shadow: none !important;
+    }
+
+    // Filas pares: gris claro legible
+    &:nth-child(even) td,
+    &:nth-child(even) th {
+      background-color: #F4F4F4 !important;
+    }
+
+    // Hover: resaltado suave
+    &:hover td,
+    &:hover th {
+      background-color: #E8E8E8 !important;
+    }
+  }
+}
+
+// gt tables
+.gt_table {
+  border-top: 3px solid $mcci-red !important;
+  font-family: $font-family-sans-serif !important;
+  font-size: 0.93rem !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+}
+
+.gt_col_heading {
+  background-color: $mcci-navy !important;
+  color: $mcci-white !important;
+  font-family: $headings-font-family !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  padding: 0.7rem 1rem !important;
+}
+
+.gt_title {
+  font-family: $headings-font-family !important;
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  color: $mcci-navy !important;
+  padding-top: 1rem !important;
+}
+
+.gt_subtitle {
+  font-size: 0.85rem !important;
+  color: $mcci-gray-600 !important;
+  padding-bottom: 0.6rem !important;
+}
+
+.gt_sourcenote {
+  font-size: 0.75rem !important;
+  color: $mcci-gray-400 !important;
+  font-style: italic !important;
+  border-top: 1px solid $mcci-gray-200 !important;
+  padding: 0.5rem 1rem !important;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  8. Code blocks
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+pre.sourceCode {
+  background: #0f172a !important;
+  border-radius: 6px !important;
+  border: none !important;
+  border-left: 4px solid $mcci-red !important;
+  padding: 1.2rem 1.4rem !important;
+  font-family: $font-family-monospace !important;
+  font-size: 0.87rem !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15) !important;
+}
+
+code {
+  font-family: $font-family-monospace !important;
+  font-size: 0.86em;
+  background: #E8001C !important;
+  color: #FFFFFF !important;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+pre code { background: transparent !important; color: #e2e8f0 !important; padding: 0 !important; font-weight: 400; }
+
+// Collapsible code summary button
+details.code-fold summary {
+  font-family: $headings-font-family;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: $mcci-navy;
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  background: $mcci-gray-200;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0.5rem;
+  transition: background 0.2s;
+
+  &:hover { background: darken($mcci-gray-200, 5%); }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  9. Callout boxes
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.callout {
+  border-radius: 6px !important;
+  border-left-width: 5px !important;
+  padding: 1.1rem 1.4rem !important;
+  margin: 1.5rem 0 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+
+  .callout-title {
+    font-family: $headings-font-family !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  p:last-child { margin-bottom: 0 !important; }
+}
+
+.callout-note {
+  background: #e8f4fd !important;
+  border-color: $mcci-navy-light !important;
+  .callout-title { color: $mcci-navy !important; }
+}
+
+.callout-tip {
+  background: #e6f4f1 !important;
+  border-color: $mcci-teal !important;
+  .callout-title { color: $mcci-teal !important; }
+}
+
+.callout-warning {
+  background: #fff3e0 !important;
+  border-color: $mcci-gold !important;
+  .callout-title { color: darken($mcci-gold, 15%) !important; }
+}
+
+.callout-important {
+  background: $mcci-red-pale !important;
+  border-color: $mcci-red !important;
+  .callout-title { color: $mcci-red !important; }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  10. Figure / chart containers
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.quarto-figure {
+  margin: 2rem 0;
+
+  figcaption {
+    font-size: 0.83rem;
+    color: $mcci-gray-600;
+    font-style: italic;
+    text-align: center;
+    margin-top: 0.6rem;
+    padding: 0 1rem;
+
+    &::before {
+      content: "▸ ";
+      color: $mcci-red;
+      font-style: normal;
+    }
+  }
+}
+
+img { border-radius: 4px; }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  11. Table of contents
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#TOC {
+  border-left: 3px solid $mcci-red;
+  padding-left: 1rem;
+
+  .toc-title {
+    font-family: $headings-font-family;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: $mcci-navy;
+    margin-bottom: 0.75rem;
+  }
+
+  ul { padding-left: 0.8rem; }
+
+  li a {
+    font-size: 0.87rem;
+    font-weight: 400;
+    color: $mcci-gray-600;
+    text-decoration: none;
+    line-height: 1.8;
+    transition: color 0.2s;
+
+    &:hover { color: $mcci-red; font-weight: 600; }
+    &.active { color: $mcci-red; font-weight: 700; }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  12. Navigation breadcrumb & page header
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.quarto-title {
+  background: linear-gradient(180deg, $mcci-light 0%, $mcci-white 100%);
+  border-bottom: 3px solid $mcci-red;
+  padding: 2.5rem 0 1.5rem;
+  margin-bottom: 2.5rem;
+
+  .title {
+    font-family: $headings-font-family;
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: $mcci-navy;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+
+  .subtitle.lead {
+    font-size: 1.05rem;
+    color: $mcci-gray-600;
+    font-weight: 300;
+    margin-top: 0.5rem;
+  }
+
+  .quarto-title-meta {
+    font-size: 0.82rem;
+    color: $mcci-gray-400;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid $mcci-gray-200;
+
+    .quarto-title-meta-heading {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: $mcci-gray-600;
+      font-size: 0.75rem;
+    }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  13. Section dividers (---) styled
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, $mcci-red, transparent);
+  margin: 3rem 0;
+  opacity: 0.4;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  14. Footer
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.nav-footer {
+  background: $mcci-navy !important;
+  color: rgba(255,255,255,0.7) !important;
+  border-top: 3px solid $mcci-red !important;
+  padding: 1.5rem 2rem !important;
+  font-size: 0.82rem !important;
+
+  a {
+    color: rgba(255,255,255,0.7) !important;
+    text-decoration: none !important;
+    font-weight: 400 !important;
+    &:hover { color: $mcci-white !important; }
+  }
+
+  .nav-footer-center {
+    font-family: $headings-font-family;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.5) !important;
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  15. Search
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#quarto-search {
+  .aa-Autocomplete {
+    border-radius: 4px;
+  }
+  input {
+    border: 1px solid rgba(255,255,255,0.3) !important;
+    background: rgba(255,255,255,0.1) !important;
+    color: white !important;
+    border-radius: 4px !important;
+    &::placeholder { color: rgba(255,255,255,0.5) !important; }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  16. Utility classes
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.text-mcci-red   { color: $mcci-red !important; }
+.text-mcci-navy  { color: $mcci-navy !important; }
+.text-mcci-gold  { color: $mcci-gold-light !important; }
+.bg-mcci-navy    { background: $mcci-navy !important; }
+.bg-mcci-light   { background: $mcci-light !important; }
+
+.highlight-box {
+  background: linear-gradient(135deg, $mcci-light, $mcci-gray-100);
+  border: 1px solid $mcci-gray-200;
+  border-left: 5px solid $mcci-red;
+  border-radius: 6px;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  17. Responsive adjustments
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@media (max-width: 768px) {
+  .mcci-hero {
+    padding: 3rem 1rem 2.5rem;
+    h1 { font-size: 2.2rem; }
+    .mcci-hero-stats { gap: 1.5rem; }
+  }
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.6rem; }
+  .mcci-cards { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .mcci-cards { grid-template-columns: 1fr; }
+  .mcci-hero .mcci-hero-stats .stat-item .stat-number { font-size: 1.8rem; }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  18. Number sections
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.header-section-number {
+  color: $mcci-red;
+  margin-right: 0.4rem;
+  font-weight: 800;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  19. Skimr output styling
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+.cell-output-stdout pre {
+  background: #0f172a;
+  color: #94a3b8;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  font-size: 0.82rem;
+  border-left: 4px solid $mcci-navy-light;
+  overflow-x: auto;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  20. Scrollbar custom
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: $mcci-gray-100; }
+::-webkit-scrollbar-thumb { background: $mcci-gray-400; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: $mcci-navy; }

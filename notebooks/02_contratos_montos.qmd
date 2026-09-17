@@ -1,0 +1,646 @@
+---
+title: "Exploración de `contratos_montos.csv`"
+subtitle: "¿Qué hay en el dataset? ¿Cómo se ve?"
+author: "Proyecto Integrador — MCCI"
+date: today
+date-format: "D [de] MMMM [de] YYYY"
+lang: es
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Contenido"
+    number-sections: true
+    code-fold: true
+    code-summary: "Ver código"
+    code-tools: true
+    theme:
+      light: [flatly, ../styles/mcci-theme.scss]
+    highlight-style: github
+    fig-align: center
+    fig-width: 10
+    fig-height: 6
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# --- USO DE IA ---
+# Asistido por Claude (Anthropic), junio 2026.
+# Prompt: "Ajusta colores MCCI con contraste suficiente en gráficas de
+# distribución del notebook 02_contratos_montos.qmd"
+# Fragmentos asistidos: colores MCCI en gráficas de distribución, formato gt.
+# -----------------
+
+library(tidyverse)
+library(janitor)
+library(scales)
+library(gt)
+library(lubridate)
+library(plotly)
+source("../scripts/utils.R")
+```
+
+## 📌 Introducción
+
+Este cuaderno explora en profundidad el dataset **`contratos_montos.csv`**, uno de los dos archivos compartidos por Mexicanos Contra la Corrupción y la Impunidad (MCCI). Contiene contratos de bienes y servicios celebrados por partidos políticos mexicanos, con la ventaja de incluir la columna `partido` en formato estandarizado.
+
+El recorrido sigue el flujo natural de un análisis exploratorio:
+
+1. **¿Qué tan grande es?** — dimensiones y primeras filas
+2. **¿Cómo están sus columnas?** — tipos, missings, cardinalidad
+3. **¿Qué hay dentro?** — distribuciones de las variables clave
+4. **¿Cómo se relacionan?** — cruces entre partido, tipo, monto y tiempo
+
+---
+
+## 📂 Carga y primer vistazo
+
+```{r}
+#| label: cargar
+
+montos <- read_csv(
+  "../../datos/contratos_montos.csv",
+  show_col_types = FALSE
+) |>
+  clean_names() |>
+  select(-x1) |>  # índice auxiliar heredado del archivo fuente
+  mutate(
+    across(starts_with("fecha"), ymd),
+    costo   = as.numeric(costo),
+    ano     = as.integer(ano),
+    partido = factor(partido,
+                     levels = c("PAN","PRI","PRD","Morena","MC","PVEM","PT"))
+  )
+```
+
+### Dimensiones
+
+```{r}
+#| label: dimensiones
+
+tibble(
+  Métrica = c("Filas (contratos)", "Columnas (variables)",
+              "Partidos únicos", "Periodo cubierto",
+              "Monto total (MXN)", "Mediana por contrato (MXN)"),
+  Valor   = c(
+    format(nrow(montos), big.mark = ","),
+    ncol(montos),
+    n_distinct(montos$partido, na.rm = TRUE),
+    paste(min(montos$ano, na.rm = TRUE), "–", max(montos$ano, na.rm = TRUE)),
+    paste0("$", format(sum(montos$costo, na.rm = TRUE), big.mark = ",")),
+    paste0("$", format(median(montos$costo[montos$costo > 0], na.rm = TRUE),
+                       big.mark = ","))
+  )
+) |>
+  gt() |>
+  tab_header(title = "Resumen del dataset contratos_montos.csv") |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+
+### Primeras filas
+
+```{r}
+#| label: head
+
+montos |>
+  slice_head(n = 8) |>
+  select(id, ano, partido, tipo_contrato, tipo_persona,
+         moral_razon, costo, fecha_firma) |>
+  gt() |>
+  tab_header(title = "Primeras 8 filas — columnas seleccionadas") |>
+  fmt_number(columns = costo, sep_mark = ",", dec_mark = ".", decimals = 0) |>
+  fmt_date(columns = fecha_firma, date_style = "yMd") |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+
+---
+
+## 🔍 Estructura de columnas
+
+### Tipos de dato y valores faltantes
+
+```{r}
+#| label: columnas-overview
+
+tibble(
+  columna  = names(montos),
+  tipo     = sapply(montos, \(x) class(x)[1]),
+  n_unicos = sapply(montos, \(x) n_distinct(x, na.rm = TRUE)),
+  n_na     = sapply(montos, \(x) sum(is.na(x))),
+  pct_na   = round(n_na / nrow(montos) * 100, 1)
+) |>
+  arrange(desc(n_na)) |>
+  gt() |>
+  tab_header(title = "Estructura de columnas",
+             subtitle = "Ordenado por % de valores faltantes") |>
+  fmt_number(columns = c(n_unicos, n_na), sep_mark = ",", decimals = 0) |>
+  cols_label(columna = "Columna", tipo = "Tipo",
+             n_unicos = "Únicos", n_na = "NAs", pct_na = "% NA") |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+
+::: {.callout-note}
+Las columnas `fisica_nombre`, `fisica_apellido1` y `fisica_apellido2` tienen muchos `NA` porque solo aplican a personas físicas (~28% del total). Es un patrón esperado: cuando `tipo_persona == "Moral"`, esos campos están vacíos.
+:::
+
+---
+
+## 📊 Variables categóricas clave
+
+### Partido político
+
+```{r}
+#| label: fig-partido
+#| fig-cap: "Distribución de contratos por partido político"
+
+df_partido <- montos |>
+  count(partido, sort = TRUE) |>
+  filter(!is.na(partido)) |>
+  mutate(
+    partido   = fct_reorder(partido, n),
+    pct       = n / sum(n),
+    pct_texto = paste0(round(pct * 100, 1), "%"),
+    color_hex = paleta_partidos[as.character(partido)],
+    tooltip   = paste0("Partido: ", partido,
+                       "<br>Contratos: ", format(n, big.mark = ","),
+                       "<br>Participación: ", pct_texto)
+  )
+
+plot_ly(
+  df_partido,
+  x         = ~n,
+  y         = ~partido,
+  type      = "bar",
+  orientation = "h",
+  marker    = list(color = ~color_hex, opacity = 0.9,
+                   line = list(color = "#1A1A1A", width = 0.5)),
+  text      = ~tooltip,
+  hoverinfo = "text"
+) |>
+  layout(
+    title  = list(text = "Número de contratos por partido político",
+                  font = list(size = 16, color = "#1A1A1A")),
+    xaxis  = list(title = "Número de contratos",
+                  tickformat = ",d", gridcolor = "#F4F4F4"),
+    yaxis  = list(title = "", tickfont = list(size = 13)),
+    plot_bgcolor  = "#FFFFFF",
+    paper_bgcolor = "#FFFFFF",
+    font          = list(color = "#1A1A1A"),
+    margin        = list(l = 60, r = 20, t = 60, b = 40)
+  )
+```
+
+```{r}
+#| label: tbl-partido
+
+montos |>
+  group_by(partido) |>
+  summarise(
+    n_contratos    = n(),
+    monto_total    = sum(costo, na.rm = TRUE),
+    monto_mediana  = median(costo[costo > 0], na.rm = TRUE),
+    monto_max      = max(costo, na.rm = TRUE),
+    pct_con_monto  = mean(costo > 0, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(desc(monto_total)) |>
+  gt() |>
+  tab_header(title = "Contratos y montos por partido") |>
+  fmt_number(columns = n_contratos, sep_mark = ",", decimals = 0) |>
+  fmt_currency(columns = c(monto_total, monto_mediana, monto_max),
+               currency = "MXN", sep_mark = ",", decimals = 0) |>
+  fmt_percent(columns = pct_con_monto, decimals = 1) |>
+  cols_label(partido = "Partido", n_contratos = "N° contratos",
+             monto_total = "Monto total", monto_mediana = "Mediana",
+             monto_max = "Máximo", pct_con_monto = "% con monto") |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+
+### Tipo de contrato
+
+```{r}
+#| label: fig-tipo-contrato
+#| fig-cap: "Tipos de contrato y su frecuencia"
+
+# Naranja MCCI (#F26522) con borde oscuro para separar barras visualmente
+montos |>
+  filter(!is.na(tipo_contrato)) |>
+  count(tipo_contrato, sort = TRUE) |>
+  mutate(tipo_contrato = fct_reorder(tipo_contrato, n)) |>
+  ggplot(aes(x = n, y = tipo_contrato)) +
+  geom_col(fill = "#F26522", color = "#1A1A1A", linewidth = 0.3, alpha = 0.9) +
+  geom_text(aes(label = label_comma()(n)), hjust = -0.1, size = 3.5,
+            color = "#1A1A1A", fontface = "bold") +
+  scale_x_continuous(labels = label_comma(), expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Tipos de contrato — frecuencia",
+       subtitle = "contratos_montos.csv — MCCI",
+       x = "Número de contratos", y = NULL, caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b"),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+### Tipo de persona (proveedor)
+
+```{r}
+#| label: fig-tipo-persona
+#| fig-cap: "Proporción de contratos con persona física vs. moral por partido"
+
+# Azul MCCI navy (#003B8D) para Moral, naranja (#F26522) para Física — alto contraste
+montos |>
+  filter(!is.na(tipo_persona), !is.na(partido)) |>
+  count(partido, tipo_persona) |>
+  group_by(partido) |>
+  mutate(pct = n / sum(n)) |>
+  ungroup() |>
+  ggplot(aes(x = forzar_orden_partidos(partido), y = pct, fill = tipo_persona)) +
+  geom_col(position = "fill", alpha = 0.92) +
+  scale_y_continuous(labels = label_percent()) +
+  scale_fill_manual(
+    values = c("Moral" = "#0d1b2a", "Física" = "#F26522"),
+    name = "Tipo de persona"
+  ) +
+  labs(title = "¿Con quién contratan los partidos?",
+       subtitle = "Persona física (naranja) vs. moral/empresa (azul oscuro)",
+       x = NULL, y = "Proporción de contratos", caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b"),
+    legend.position = "top"
+  )
+```
+
+---
+
+## 💰 Variable numérica: `costo`
+
+### Distribución general
+
+```{r}
+#| label: fig-costo-hist
+#| fig-cap: "Distribución del costo de los contratos (escala logarítmica)"
+
+# Histograma con rojo MCCI y borde oscuro para separar barras — fondo blanco garantiza contraste
+montos |>
+  filter(costo > 0) |>
+  ggplot(aes(x = costo)) +
+  geom_histogram(bins = 60, fill = "#E8001C", color = "#1A1A1A",
+                 linewidth = 0.2, alpha = 0.88) +
+  scale_x_log10(
+    labels = label_dollar(prefix = "$", big.mark = ","),
+    breaks = 10^(3:9)
+  ) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(title = "Distribución de montos de contratos (escala log₁₀)",
+       subtitle = "La mayoría son contratos pequeños; unos pocos superan $10M MXN",
+       x = "Monto del contrato (MXN)", y = "Frecuencia", caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b")
+  )
+```
+
+::: {.callout-note}
+La distribución es fuertemente **asimétrica a la derecha**: la mayoría de los contratos son por montos relativamente pequeños, pero unos pocos valores muy altos jalan la media hacia arriba. Siempre es más informativo reportar la **mediana** que el promedio para esta variable.
+:::
+
+### Monto por partido (boxplot)
+
+```{r}
+#| label: fig-costo-boxplot
+#| fig-cap: "Distribución del monto de contratos por partido (escala log)"
+
+# Paleta institucional por partido; outliers transparentes para no saturar
+montos |>
+  filter(costo > 0, !is.na(partido)) |>
+  mutate(partido = fct_reorder(partido, costo, median)) |>
+  ggplot(aes(x = costo, y = partido, fill = partido)) +
+  geom_boxplot(outlier.alpha = 0.15, outlier.size = 0.8, color = "#1A1A1A",
+               linewidth = 0.4, show.legend = FALSE) +
+  scale_fill_manual(values = paleta_partidos) +
+  scale_x_log10(labels = label_dollar(prefix = "$", big.mark = ",")) +
+  labs(title = "Distribución del monto por partido (ordenado por mediana)",
+       subtitle = "Escala logarítmica · cada partido opera en rangos de precio distintos",
+       x = "Monto (MXN, escala log₁₀)", y = NULL, caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b"),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+### Monto total por partido y año
+
+```{r}
+#| label: fig-monto-anio-partido
+#| fig-cap: "Monto total de contratos por partido y año — gráfica interactiva (hover para ver valores, click en leyenda para filtrar partidos)"
+
+df_temporal <- montos |>
+  filter(costo > 0, !is.na(partido), !is.na(ano)) |>
+  group_by(partido, ano) |>
+  summarise(monto_total = sum(costo), .groups = "drop") |>
+  mutate(
+    monto_m   = monto_total / 1e6,
+    tooltip   = paste0(as.character(partido), " — ", ano,
+                       "<br>$", formatC(monto_m, format="f", digits=1, big.mark=","), " M MXN")
+  )
+
+partidos_orden <- c("PAN", "PRI", "PRD", "Morena", "MC", "PVEM", "PT")
+
+p_temporal <- plot_ly(type = "scatter", mode = "lines+markers")
+for (pt in partidos_orden) {
+  df_pt <- filter(df_temporal, partido == pt)
+  if (nrow(df_pt) > 0) {
+    p_temporal <- add_trace(
+      p_temporal,
+      data       = df_pt,
+      x          = ~ano,
+      y          = ~monto_m,
+      name       = pt,
+      text       = ~tooltip,
+      hoverinfo  = "text",
+      line       = list(color = paleta_partidos[[pt]], width = 2.5),
+      marker     = list(color = paleta_partidos[[pt]], size = 8)
+    )
+  }
+}
+
+p_temporal |>
+  layout(
+    title  = list(text = "Monto total de contratos por partido y año",
+                  font = list(size = 16, color = "#1A1A1A")),
+    xaxis  = list(title = "Año", dtick = 1, gridcolor = "#F4F4F4",
+                  tickvals = 2019:2025),
+    yaxis  = list(title = "Monto total (millones MXN)",
+                  tickprefix = "$", ticksuffix = " M",
+                  gridcolor = "#F4F4F4"),
+    legend = list(orientation = "v", title = list(text = "Partido")),
+    plot_bgcolor  = "#FFFFFF",
+    paper_bgcolor = "#FFFFFF",
+    font          = list(color = "#1A1A1A"),
+    hovermode     = "x unified"
+  )
+```
+
+---
+
+## ⏳ Análisis temporal
+
+### Contratos por año
+
+```{r}
+#| label: fig-temporal
+#| fig-cap: "Número de contratos registrados por año"
+
+# Rojo MCCI (#E8001C); diciembre resaltado es innecesario aquí (año completo)
+montos |>
+  filter(!is.na(ano)) |>
+  count(ano) |>
+  ggplot(aes(x = factor(ano), y = n)) +
+  geom_col(fill = "#E8001C", color = "#1A1A1A", linewidth = 0.3, alpha = 0.88) +
+  geom_text(aes(label = label_comma()(n)), vjust = -0.4, size = 3.5,
+            color = "#1A1A1A", fontface = "bold") +
+  scale_y_continuous(labels = label_comma(), expand = expansion(mult = c(0, 0.12))) +
+  labs(title = "Contratos registrados por año",
+       subtitle = "contratos_montos.csv — MCCI",
+       x = "Año", y = "Número de contratos", caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b"),
+    panel.grid.major.x = element_blank()
+  )
+```
+
+### ¿Cuándo se firman los contratos?
+
+```{r}
+#| label: fig-mes-firma
+#| fig-cap: "Mes del año en que se firma el contrato"
+
+# Diciembre resaltado en rojo MCCI; el resto en azul oscuro — patrón fiscal relevante
+montos |>
+  filter(!is.na(fecha_firma)) |>
+  mutate(
+    mes_num = month(fecha_firma),
+    mes     = factor(mes_num, levels = 1:12,
+                     labels = c("Ene","Feb","Mar","Abr","May","Jun",
+                                "Jul","Ago","Sep","Oct","Nov","Dic")),
+    es_dic  = mes_num == 12
+  ) |>
+  count(mes, es_dic) |>
+  ggplot(aes(x = mes, y = n, fill = es_dic)) +
+  geom_col(color = "#1A1A1A", linewidth = 0.25, alpha = 0.9) +
+  scale_fill_manual(
+    values = c("FALSE" = "#0d1b2a", "TRUE" = "#E8001C"),
+    labels = c("Otros meses", "Diciembre (cierre fiscal)"),
+    name = NULL
+  ) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(title = "¿En qué mes se firman más contratos?",
+       subtitle = "Diciembre resaltado — patrón de cierre de ejercicio fiscal",
+       x = NULL, y = "Número de contratos", caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b"),
+    legend.position = "top",
+    panel.grid.major.x = element_blank()
+  )
+```
+
+---
+
+## 🏢 Proveedores
+
+### Top 20 por número de contratos
+
+```{r}
+#| label: fig-top-proveedores
+#| fig-cap: "Top 20 proveedores por número de contratos"
+
+# Naranja MCCI para proveedores; nombres truncados a 45 chars para legibilidad
+montos |>
+  mutate(
+    proveedor = case_when(
+      tipo_persona == "Moral"  ~ moral_razon_homo,
+      tipo_persona == "Física" ~ nom_fisica_homo,
+      TRUE ~ NA_character_
+    )
+  ) |>
+  filter(!is.na(proveedor)) |>
+  count(proveedor, sort = TRUE) |>
+  slice_max(n, n = 20) |>
+  mutate(proveedor = str_trunc(proveedor, 45),
+         proveedor = fct_reorder(proveedor, n)) |>
+  ggplot(aes(x = n, y = proveedor)) +
+  geom_col(fill = "#F26522", color = "#1A1A1A", linewidth = 0.25, alpha = 0.9) +
+  geom_text(aes(label = n), hjust = -0.15, size = 3, color = "#1A1A1A") +
+  scale_x_continuous(labels = label_comma(), expand = expansion(mult = c(0, 0.12))) +
+  labs(title = "Top 20 proveedores por número de contratos",
+       subtitle = "Posibles proveedores recurrentes — analizar concentración",
+       x = "Número de contratos", y = NULL, caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b", size = 9),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+### Top 15 por monto total
+
+```{r}
+#| label: fig-top-monto
+#| fig-cap: "Top 15 proveedores por monto total contratado"
+
+# Rojo MCCI para top proveedores por monto — contraste alto en fondo blanco
+montos |>
+  filter(costo > 0) |>
+  mutate(
+    proveedor = case_when(
+      tipo_persona == "Moral"  ~ moral_razon_homo,
+      tipo_persona == "Física" ~ nom_fisica_homo,
+      TRUE ~ NA_character_
+    )
+  ) |>
+  filter(!is.na(proveedor)) |>
+  group_by(proveedor) |>
+  summarise(monto_total = sum(costo, na.rm = TRUE), .groups = "drop") |>
+  slice_max(monto_total, n = 15) |>
+  mutate(proveedor = str_trunc(proveedor, 45),
+         proveedor = fct_reorder(proveedor, monto_total)) |>
+  ggplot(aes(x = monto_total, y = proveedor)) +
+  geom_col(fill = "#E8001C", color = "#1A1A1A", linewidth = 0.25, alpha = 0.9) +
+  scale_x_continuous(
+    labels = label_dollar(scale = 1e-6, big.mark = ","),
+    expand = expansion(mult = c(0, 0.05))
+  ) +
+  labs(title = "Top 15 proveedores por monto total contratado",
+       subtitle = "Outliers de monto — posibles contratos de alto valor a revisar",
+       x = "Monto total (millones MXN)", y = NULL, caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b", size = 9),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+---
+
+## 🔥 Mapa de calor: partido × tipo de contrato
+
+```{r}
+#| label: fig-heatmap
+#| fig-cap: "Número de contratos por partido y tipo"
+
+# Gradiente blanco→rojo MCCI con texto adaptativo (oscuro en celdas claras, claro en oscuras)
+montos |>
+  filter(!is.na(partido), !is.na(tipo_contrato)) |>
+  count(partido, tipo_contrato) |>
+  group_by(tipo_contrato) |>
+  mutate(pct = n / sum(n)) |>
+  ungroup() |>
+  ggplot(aes(x = tipo_contrato, y = forzar_orden_partidos(partido), fill = n)) +
+  geom_tile(color = "white", linewidth = 1.2) +
+  geom_text(aes(label = format(n, big.mark = ","),
+                color = ifelse(n > max(n) * 0.5, "claro", "oscuro")),
+            size = 3.5, fontface = "bold") +
+  scale_fill_gradient(low = "#F4F4F4", high = "#E8001C", labels = label_comma()) +
+  scale_color_manual(values = c("claro" = "#F4F4F4", "oscuro" = "#1A1A1A"),
+                     guide = "none") +
+  labs(title = "¿Qué tipo de contratos celebra cada partido?",
+       subtitle = "Color más intenso = más contratos",
+       x = NULL, y = NULL, fill = "N° contratos", caption = "Fuente: MCCI") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text = element_text(color = "#1e293b"),
+    panel.grid = element_blank()
+  )
+```
+
+---
+
+## ✅ Resumen ejecutivo
+
+```{r}
+#| label: resumen
+
+tibble(
+  Hallazgo = c(
+    "Partido con más contratos",
+    "Partido con mayor monto total",
+    "Tipo de contrato más frecuente",
+    "Tipo de persona más frecuente",
+    "Año con más contratos",
+    "Contratos sin monto ($0)",
+    "Mediana del costo",
+    "Contrato de mayor valor"
+  ),
+  Valor = c(
+    names(sort(table(montos$partido), decreasing = TRUE))[1],
+    montos |> group_by(partido) |>
+      summarise(t = sum(costo, na.rm = TRUE)) |>
+      slice_max(t, n = 1) |> pull(partido) |> as.character(),
+    names(sort(table(montos$tipo_contrato), decreasing = TRUE))[1],
+    names(sort(table(montos$tipo_persona), decreasing = TRUE))[1],
+    names(sort(table(montos$ano), decreasing = TRUE))[1],
+    paste0(format(sum(montos$costo == 0, na.rm = TRUE), big.mark = ","),
+           " (", percent(mean(montos$costo == 0, na.rm = TRUE), accuracy = 0.1), ")"),
+    paste0("$", format(median(montos$costo[montos$costo > 0], na.rm = TRUE),
+                       big.mark = ",")),
+    paste0("$", format(max(montos$costo, na.rm = TRUE), big.mark = ","))
+  )
+) |>
+  gt() |>
+  tab_header(title = "Hallazgos clave",
+             subtitle = "contratos_montos.csv — MCCI") |>
+  tab_style(style = cell_text(weight = "bold"),
+            locations = cells_column_labels())
+```
+
+::: {.callout-tip}
+## Preguntas para explorar en tu propio análisis
+
+- ¿Hay proveedores que contratan con **múltiples partidos** simultáneamente?
+- ¿Los contratos de mayor monto se concentran cerca de **periodos electorales**?
+- ¿Cómo varía la **duración** de los contratos (`fecha_fin_vigencia - fecha_inicio_vigencia`) entre partidos?
+- ¿Qué **áreas internas** (`area`) concentran más gasto en cada partido?
+:::
+
+---
+
+## 🖥️ Información de sesión
+
+```{r}
+#| label: session-info
+
+sessionInfo()
+```

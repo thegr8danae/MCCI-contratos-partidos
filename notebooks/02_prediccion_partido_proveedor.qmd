@@ -1,0 +1,660 @@
+---
+title: "¿Puede un modelo predecir el partido que asigna un contrato a su proveedor?"
+subtitle: "Análisis de clasificación con características del proveedor · MCCI 2026"
+author: "Oscar Verdugo Carranza, Danae Jimenez Ramirez, Jose Francisco Garces 
+Camacho, Mauricio Sepulveda Soto"
+date: today
+date-format: "12 [de] Junio [de] 2026"
+lang: es
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Contenido"
+    number-sections: true
+    code-fold: true
+    code-summary: "Ver código"
+    code-tools: true
+    theme:
+      light: [cosmo, ../styles/mcci-theme.scss]
+    highlight-style: github
+    fig-align: center
+    fig-width: 9
+    fig-height: 6
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# --- USO DE IA ---
+# Asistido por Claude (Anthropic), junio 2026.
+# Prompt: "Crea un notebook de Quarto en R con tidymodels para clasificación
+# multiclase de partidos políticos a partir de características de proveedores,
+# siguiendo el estilo del proyecto MCCI Proyecto Integrador"
+# Fragmentos asistidos: recipe de preprocesamiento, configuración de tune_grid,
+# código de evaluación (métricas, matriz de confusión, importancia de variables).
+# Decisiones propias: elección de modelos (árbol + RF), exclusión de `area` por
+# data leakage, justificación de nivel de análisis (contrato vs. proveedor),
+# redacción de secciones de interpretación y ética.
+# -----------------
+
+library(tidyverse)
+library(tidymodels)
+library(ranger)
+library(vip)
+library(gt)
+library(scales)
+library(skimr)
+library(plotly)
+source("../scripts/utils.R")
+```
+
+## 📌 Introducción
+
+Este cuaderno responde la siguiente pregunta de investigación: **¿es posible predecir el partido político que asigna un contrato a partir de las características observables del proveedor?** El enfoque es clasificatorio: dado un contrato con sus características —monto, tipo de persona, duración, mes de firma, tipo de bien o servicio— entrenamos dos modelos para estimar qué partido es más probable que lo haya asignado.
+
+La relevancia es periodística y académica. Si ciertas características del proveedor son sistemáticamente asociadas con un partido, eso revela patrones en cómo cada instituto político estructura su gasto. No implica causalidad ni señala conducta ilegal, pero sí marca dónde vale la pena investigar más.
+
+### Justificación de la elección de modelos
+
+Se eligieron **Árbol de Decisión** y **Random Forest** por razones complementarias:
+
+- **Árbol de Decisión** (`rpart`): completamente interpretable. Su estructura de nodos puede visualizarse y explicarse regla por regla a un público no técnico. Es el modelo más transparente para una audiencia de política pública y sirve como línea base interpretable.
+
+- **Random Forest** (`ranger`): extensión natural del árbol de decisión que promedía cientos de árboles para reducir la varianza y mejorar la generalización. Su mayor exactitud (87.1% vs. 72.5% del árbol) justifica su uso en producción. La importancia de variables via impureza Gini permite identificar qué características del contrato son más informativas para distinguir partidos.
+
+Ambos modelos son apropiados para este problema de **clasificación multiclase** (7 clases) con variables mixtas (numéricas y categóricas), y ambos manejan bien el desbalance moderado de clases presente en el dataset. Se descartaron modelos de caja negra (redes neuronales, gradient boosting) porque la interpretabilidad es un criterio explícito de este análisis orientado a política pública.
+
+::: {.callout-note}
+**Dataset utilizado**: `contratos_montos.csv` — el único de los dos archivos que contiene la columna `partido` en formato estandarizado, indispensable como variable objetivo. La columna `area` se excluye explícitamente del modelo para evitar *data leakage* (los nombres de área pueden identificar directamente al partido).
+:::
+
+---
+
+## 🧹 Carga y limpieza de datos
+
+```{r}
+#| label: cargar-datos
+
+datos <- cargar_contratos_montos("contratos_montos.csv") |>
+  select(-any_of("x1")) |>
+  construir_features_proveedor() |>
+  mutate(
+    partido          = factor(partido,
+                              levels = c("PAN", "PRI", "PRD", "Morena",
+                                         "MC", "PVEM", "PT")),
+    # Convertir logicals a integer para compatibilidad con tidymodels
+    es_diciembre     = as.integer(es_diciembre),
+    es_persona_moral = as.integer(es_persona_moral),
+    alto_valor       = as.integer(alto_valor)
+  )
+
+glimpse(datos)
+```
+
+### Distribución de la variable objetivo
+
+La tabla siguiente muestra cuántos contratos hay por partido. Esta distribución determina el grado de desbalance de clases que el modelo debe manejar.
+
+```{r}
+#| label: tbl-distribucion-partido
+
+datos |>
+  count(partido, sort = FALSE) |>
+  mutate(
+    pct     = n / sum(n),
+    pct_fmt = percent(pct, accuracy = 0.1)
+  ) |>
+  gt() |>
+  tab_header(
+    title    = "Distribución de contratos por partido político",
+    subtitle = "Dataset: contratos_montos.csv — MCCI"
+  ) |>
+  fmt_number(columns = n, sep_mark = ",", decimals = 0) |>
+  fmt_percent(columns = pct, decimals = 1) |>
+  cols_label(
+    partido = "Partido",
+    n       = "N° contratos",
+    pct     = "Proporción",
+    pct_fmt = "% (texto)"
+  ) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style     = cell_fill(color = "#EEF2FF"),
+    locations = cells_body(rows = seq(1, 7, 2))
+  )
+```
+
+---
+
+## 📊 Análisis exploratorio orientado a la pregunta
+
+Antes de modelar, es útil observar si ya visualmente hay diferencias entre partidos en las variables que usaremos como predictores. Si no hay diferencias aparentes, el modelo tampoco las encontrará.
+
+### Gráfica 1 — Distribución del costo (log) por partido
+
+```{r}
+#| label: fig-violin-costo
+#| fig-cap: "Distribución del logaritmo del costo de contratos por partido político. Violín exterior muestra la densidad; boxplot interior muestra la mediana e IQR."
+
+datos |>
+  filter(!is.na(partido)) |>
+  ggplot(aes(x = forzar_orden_partidos(partido), y = log_costo, fill = partido)) +
+  geom_violin(alpha = 0.7) +
+  geom_boxplot(width = 0.1, outlier.size = 0.5, fill = "white") +
+  scale_fill_manual(values = paleta_partidos) +
+  labs(
+    title   = "Distribución del costo (log) por partido político",
+    x       = NULL,
+    y       = "log(costo + 1)",
+    caption = "Fuente: MCCI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+### Gráfica 2 — Proporción de tipo de persona por partido
+
+```{r}
+#| label: fig-tipo-persona-partido
+#| fig-cap: "Proporción de contratos con persona física o moral por partido. Barras apiladas al 100%."
+
+datos |>
+  filter(!is.na(tipo_persona), !is.na(partido)) |>
+  count(partido, tipo_persona) |>
+  group_by(partido) |>
+  mutate(prop = n / sum(n)) |>
+  ungroup() |>
+  ggplot(aes(x = forzar_orden_partidos(partido), y = prop, fill = tipo_persona)) +
+  geom_col(position = "fill", alpha = 0.85) +
+  scale_y_continuous(labels = label_percent()) +
+  scale_fill_manual(
+    values = c("Moral" = "#003B8D", "Física" = "#CC6600"),
+    name   = "Tipo de persona"
+  ) +
+  labs(
+    title   = "Tipo de persona del proveedor por partido político",
+    x       = "Partido",
+    y       = "Proporción de contratos",
+    caption = "Fuente: MCCI"
+  ) +
+  theme_minimal()
+```
+
+### Gráfica 3 — Número mediano de contratos por proveedor según partido
+
+```{r}
+#| label: fig-mediana-contratos-proveedor
+#| fig-cap: "Número mediano de contratos obtenidos por proveedor, desagregado por partido que asigna."
+
+df_mediana <- datos |>
+  filter(!is.na(partido)) |>
+  mutate(
+    proveedor = case_when(
+      tipo_persona == "Moral"  ~ moral_razon_homo,
+      tipo_persona == "Física" ~ nom_fisica_homo,
+      TRUE                     ~ NA_character_
+    )
+  ) |>
+  filter(!is.na(proveedor)) |>
+  group_by(partido, proveedor) |>
+  summarise(n_contratos = n(), .groups = "drop") |>
+  group_by(partido) |>
+  summarise(mediana_contratos = median(n_contratos), .groups = "drop") |>
+  mutate(
+    partido = fct_reorder(partido, mediana_contratos),
+    color   = paleta_partidos[as.character(partido)]
+  )
+
+p_mediana <- df_mediana |>
+  ggplot(aes(
+    x    = mediana_contratos,
+    y    = partido,
+    fill = partido,
+    text = paste0("Partido: ", partido, "<br>Mediana: ", mediana_contratos)
+  )) +
+  geom_col(alpha = 0.88) +
+  scale_fill_manual(values = paleta_partidos) +
+  labs(
+    title   = "Mediana de contratos por proveedor según partido",
+    x       = "Mediana de contratos por proveedor",
+    y       = NULL,
+    caption = "Fuente: MCCI"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplotly(p_mediana, tooltip = "text") |>
+  layout(xaxis = list(title = "Mediana de contratos por proveedor"),
+         yaxis = list(title = ""))
+```
+
+---
+
+## ⚙️ Ingeniería de features
+
+### ¿Nivel contrato o nivel proveedor?
+
+Una decisión central antes de modelar es la **unidad de análisis**. Existen dos opciones: trabajar a nivel de contrato individual (una fila por contrato) o agregar los datos para trabajar a nivel de proveedor (una fila por empresa o persona).
+
+El análisis a nivel proveedor, implementado en la función `perfil_proveedor()`, ofrece una visión más estable del comportamiento de cada empresa, pero introduce un problema fatal para esta pregunta de investigación: al agregar, perdemos la columna `partido` como variable objetivo directa, ya que un mismo proveedor puede haber trabajado con múltiples partidos en distintos contratos. La variable `n_partidos_distintos` que genera el perfil captura cuántos partidos contrató cada proveedor, pero no nos permite predecir *cuál* partido asignó *cada* contrato.
+
+Por esta razón, el análisis se realiza a **nivel de contrato individual**. Cada fila representa un contrato, conserva su etiqueta `partido`, y las features derivadas por `construir_features_proveedor()` enriquecen cada observación con información contextual (duración, mes de firma, transformación logarítmica del costo). Este enfoque maximiza el número de observaciones disponibles para el entrenamiento y mantiene la variable objetivo intacta.
+
+### Vista general de las features de modelado
+
+```{r}
+#| label: skim-features
+
+features_vista <- datos |>
+  select(
+    partido, ano, tipo_contrato, tipo_persona,
+    costo, log_costo, duracion_dias, mes_firma,
+    es_diciembre, alto_valor, es_persona_moral
+  )
+
+skimr::skim(features_vista)
+```
+
+---
+
+## 🤖 Modelado con tidymodels
+
+```{r}
+#| label: preparar-datos-modelo
+
+# Generado con ayuda de Claude (Anthropic), junio 2026.
+# Prompt: "Escribe un recipe de tidymodels para clasificación multiclase
+# con variables mixtas, excluyendo columnas de texto libre y fechas crudas"
+
+# Excluir area (data leakage) y filtrar filas sin partido
+datos_modelo <- datos |>
+  select(-any_of("area")) |>
+  filter(!is.na(partido))
+```
+
+```{r}
+#| label: split-cv
+
+set.seed(42)
+
+split    <- initial_split(datos_modelo, prop = 0.75, strata = partido)
+train    <- training(split)
+test     <- testing(split)
+cv_folds <- vfold_cv(train, v = 5, strata = partido)
+
+cat(sprintf("Entrenamiento: %s contratos\nPrueba:        %s contratos\n",
+            format(nrow(train), big.mark = ","),
+            format(nrow(test),  big.mark = ",")))
+```
+
+```{r}
+#| label: recipe
+
+receta <- recipe(partido ~ ., data = train) |>
+  step_rm(any_of(c(
+    "area", "id", "archivo", "url", "nota", "partido_archivo",
+    "nom_fisica", "nom_fisica_homo", "moral_razon_homo",
+    "moral_razon", "fisica_nombre", "fisica_apellido1", "fisica_apellido2",
+    "fecha_firma", "fecha_inicio_vigencia", "fecha_fin_vigencia",
+    # Columnas de texto libre y fechas adicionales que generan dummies con
+    # nombres duplicados por truncamiento o que no aportan señal al modelo
+    "descripcion", "tema", "alcance",
+    "fecha_inicio_periodo", "fecha_fin_periodo",
+    "fecha_actualizacion", "fecha_validacion",
+    "ano_archivo"
+  ))) |>
+  step_unknown(all_nominal_predictors()) |>
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) |>
+  step_nzv(all_predictors()) |>
+  step_impute_median(all_numeric_predictors())
+```
+
+```{r}
+#| label: modelo-rf
+
+modelo_rf <- rand_forest(
+  mtry  = tune(),
+  trees = 500,
+  min_n = tune()
+) |>
+  set_engine("ranger", importance = "impurity") |>
+  set_mode("classification")
+
+wf <- workflow() |>
+  add_recipe(receta) |>
+  add_model(modelo_rf)
+```
+
+```{r}
+#| label: tuning
+#| cache: false
+
+# Generado con ayuda de Claude (Anthropic), junio 2026.
+# Prompt: "Configura tune_grid con 10 combinaciones aleatorias de
+# hiperparámetros para un Random Forest multiclase con tidymodels"
+
+set.seed(42)
+
+tune_res <- tune_grid(
+  wf,
+  resamples = cv_folds,
+  grid      = 10,
+  metrics   = metric_set(accuracy, roc_auc)
+)
+
+# Mejores hiperparámetros según AUC
+best_params <- select_best(tune_res, metric = "roc_auc")
+best_params
+```
+
+```{r}
+#| label: resultados-tuning
+#| fig-cap: "AUC y Accuracy por combinación de hiperparámetros evaluada durante la búsqueda aleatoria."
+
+autoplot(tune_res)
+```
+
+```{r}
+#| label: fit-final
+
+final_wf  <- finalize_workflow(wf, best_params)
+final_fit <- last_fit(final_wf, split, metrics = metric_set(accuracy, roc_auc))
+```
+
+---
+
+## 📈 Evaluación del modelo
+
+### Métricas generales
+
+```{r}
+#| label: tbl-metricas
+
+preds_test <- collect_predictions(final_fit)
+
+metricas_base <- collect_metrics(final_fit)
+
+f1_macro <- preds_test |>
+  f_meas(truth = partido, estimate = .pred_class, estimator = "macro")
+
+tabla_metricas <- tibble(
+  Métrica = c("Exactitud (Accuracy)", "AUC (Hand-Till)", "F1 macro"),
+  Valor   = c(
+    filter(metricas_base, .metric == "accuracy") |> pull(.estimate) |> round(3),
+    filter(metricas_base, .metric == "roc_auc")  |> pull(.estimate) |> round(3),
+    round(f1_macro$.estimate, 3)
+  )
+)
+
+tabla_metricas |>
+  gt() |>
+  tab_header(
+    title    = "Métricas de evaluación — conjunto de prueba",
+    subtitle = "Random Forest con ranger · MCCI 2026"
+  ) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style     = cell_fill(color = "#EEF2FF"),
+    locations = cells_body(rows = seq(1, 3, 2))
+  )
+```
+
+**¿Qué significa cada métrica en este contexto?** La **exactitud (accuracy)** mide qué fracción de los contratos del conjunto de prueba fueron asignados correctamente al partido verdadero. En un problema con 7 partidos, la línea base aleatoria es ~14% (1/7), por lo que cualquier valor superior ya es informativo. El **AUC (Hand-Till)** generaliza el área bajo la curva ROC al caso multiclase: promedia los AUC de cada par de partidos, ponderando por la frecuencia de aparición; un valor de 1.0 sería clasificación perfecta y 0.5 sería equivalente al azar. El **F1 macro** calcula el F1 (media armónica de precisión y recall) para cada partido por separado y luego promedia, lo que penaliza cuando el modelo falla sistemáticamente con los partidos minoritarios (MC, PT, PVEM) aunque tenga alta accuracy global gracias a los partidos con más contratos.
+
+### Matriz de confusión
+
+```{r}
+#| label: fig-confusion-matrix
+#| fig-cap: "Matriz de confusión en el conjunto de prueba. Diagonal principal: predicciones correctas. Celdas fuera de la diagonal: errores de clasificación."
+
+cm <- preds_test |>
+  conf_mat(truth = partido, estimate = .pred_class)
+
+autoplot(cm, type = "heatmap") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  labs(
+    title   = "Matriz de confusión — conjunto de prueba",
+    x       = "Partido predicho",
+    y       = "Partido real",
+    caption = "Fuente: MCCI"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Importancia de variables
+
+```{r}
+#| label: fig-importancia-variables
+#| fig-cap: "Top 15 variables con mayor importancia según la reducción de impureza Gini en el Random Forest final."
+
+importancia <- final_fit |>
+  extract_fit_parsnip() |>
+  vip::vi()
+
+df_imp <- importancia |>
+  slice_max(Importance, n = 15) |>
+  mutate(Variable = fct_reorder(Variable, Importance))
+
+p_imp <- df_imp |>
+  ggplot(aes(
+    x    = Importance,
+    y    = Variable,
+    text = paste0("Variable: ", Variable, "<br>Importancia Gini: ", round(Importance, 1))
+  )) +
+  geom_col(fill = "#E8001C", alpha = 0.88) +
+  labs(
+    title    = "Top 15 variables más importantes (Random Forest)",
+    subtitle = "Importancia medida como reducción de impureza Gini",
+    x        = "Importancia (impureza Gini)",
+    y        = NULL,
+    caption  = "Fuente: MCCI"
+  ) +
+  theme_minimal()
+
+ggplotly(p_imp, tooltip = "text") |>
+  layout(xaxis = list(title = "Importancia (impureza Gini)"),
+         yaxis = list(title = ""))
+```
+
+---
+
+## 📊 Comparación de Modelos: Árbol vs Random Forest
+
+Esta sección compara los dos modelos evaluados en el proyecto usando las métricas del conjunto de prueba (25% de los datos, ~3,780 contratos). Los resultados se calcularon con los mismos datos, la misma receta de preprocesamiento y la misma semilla aleatoria.
+
+::: {.callout-note}
+Las métricas de ambos modelos provienen de la ejecución del pipeline completo (`scripts/06_arbol_decision.R` y `scripts/07_random_forest.R`). La línea base aleatoria con 7 partidos equiprobables es **14.3%**.
+:::
+
+### Tabla comparativa
+
+```{r}
+#| label: tbl-comparacion-modelos
+
+# Generado con ayuda de Claude (Anthropic), junio 2026.
+# Prompt: "Agrega sección de comparación de modelos al notebook de ML usando
+# outputs pre-calculados del pipeline de scripts"
+
+tabla_comp <- read.csv("../outputs/08_tabla_comparacion.csv",
+                       encoding = "UTF-8", check.names = FALSE)
+
+# RF metrics live (from this notebook's final_fit)
+acc_rf_live  <- filter(collect_metrics(final_fit), .metric == "accuracy") |> pull(.estimate)
+f1_rf_live   <- preds_test |> f_meas(truth=partido, estimate=.pred_class, estimator="macro") |> pull(.estimate)
+
+tabla_display <- tibble(
+  Modelo          = c("Árbol de Decisión", "Random Forest"),
+  Accuracy        = c(tabla_comp$Accuracy[1], round(acc_rf_live, 3)),
+  `Precisión macro` = c(tabla_comp$Precision[1], tabla_comp$Precision[2]),
+  `Recall macro`    = c(tabla_comp$Recall[1],    tabla_comp$Recall[2]),
+  `F1 macro`        = c(NA_real_,               round(f1_rf_live, 3)),
+  `vs. azar (×)`    = c(round(tabla_comp$Accuracy[1] / (1/7), 1),
+                         round(acc_rf_live / (1/7), 1))
+)
+
+tabla_display |>
+  gt() |>
+  tab_header(
+    title    = "Comparación de modelos — conjunto de prueba",
+    subtitle = "Árbol de Decisión (rpart) vs Random Forest (ranger) · MCCI 2026"
+  ) |>
+  fmt_number(columns = c(Accuracy, `Precisión macro`, `Recall macro`, `F1 macro`),
+             decimals = 3) |>
+  fmt_missing(columns = everything(), missing_text = "—") |>
+  tab_style(
+    style     = list(cell_fill(color = "#E8001C"), cell_text(color = "#FFFFFF", weight = "bold")),
+    locations = cells_body(rows = Modelo == "Random Forest")
+  ) |>
+  tab_style(
+    style     = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_footnote(
+    footnote  = "Línea base aleatoria (7 partidos): 14.3% accuracy",
+    locations = cells_column_labels(columns = `vs. azar (×)`)
+  )
+```
+
+### Gráfica comparativa
+
+```{r}
+#| label: fig-comparacion-modelos
+#| fig-cap: "Comparación de métricas entre Árbol de Decisión y Random Forest. El Random Forest supera en todas las métricas."
+
+df_comp_long <- tibble(
+  Modelo   = rep(c("Árbol de Decisión", "Random Forest"), each = 3),
+  Métrica  = rep(c("Accuracy", "Precisión macro", "Recall macro"), 2),
+  Valor    = c(
+    tabla_comp$Accuracy[1],  tabla_comp$Precision[1], tabla_comp$Recall[1],
+    round(acc_rf_live, 3),   tabla_comp$Precision[2], tabla_comp$Recall[2]
+  ),
+  Color    = rep(c("#F26522", "#E8001C"), each = 3)
+)
+
+plot_ly(
+  df_comp_long,
+  x      = ~Métrica,
+  y      = ~Valor,
+  color  = ~Modelo,
+  colors = c("Árbol de Decisión" = "#F26522", "Random Forest" = "#E8001C"),
+  type   = "bar",
+  text   = ~paste0(Modelo, "<br>", Métrica, ": ", scales::percent(Valor, accuracy = 0.1)),
+  hoverinfo = "text"
+) |>
+  layout(
+    barmode = "group",
+    title   = list(text = "Árbol de Decisión vs Random Forest — métricas en prueba",
+                   font = list(size = 16, color = "#1A1A1A")),
+    yaxis   = list(
+      title      = "Valor",
+      tickformat = ".0%",
+      range      = c(0.5, 1.0),
+      gridcolor  = "#F4F4F4"
+    ),
+    xaxis    = list(title = ""),
+    legend   = list(orientation = "h", y = -0.15),
+    plot_bgcolor  = "#FFFFFF",
+    paper_bgcolor = "#FFFFFF",
+    font     = list(color = "#1A1A1A"),
+    shapes   = list(list(
+      type = "line", x0 = -0.5, x1 = 2.5,
+      y0   = 1/7, y1 = 1/7,
+      line = list(color = "#94a3b8", width = 1.5, dash = "dot")
+    )),
+    annotations = list(list(
+      x = 2.4, y = 1/7 + 0.02,
+      text     = "Azar (14.3%)",
+      showarrow = FALSE,
+      font     = list(size = 11, color = "#64748b")
+    ))
+  )
+```
+
+### Veredicto
+
+::: {.callout-important}
+## Resultado de la comparación
+
+**🏆 Mejor modelo por desempeño: Random Forest** — Accuracy ~86%, Precisión macro 85%, Recall macro 82%. Supera al Árbol de Decisión en todas las métricas y está ~6× por encima del azar (14.3%).
+
+**📖 Mejor modelo por interpretabilidad: Árbol de Decisión** — Accuracy ~73%, pero cada regla de clasificación puede visualizarse y explicarse nodo a nodo en < 2 minutos. Ideal para presentaciones ante audiencias no técnicas.
+
+**Trade-off clave:** El Random Forest gana ~13 puntos de accuracy al costo de una caja negra (100–500 árboles sin estructura visible). Para periodismo de datos o investigación académica donde se necesita explicar *cómo* se toma cada decisión, el Árbol de Decisión sigue siendo la opción más responsable. Para detección de contratos atípicos a escala, el Random Forest es la herramienta adecuada.
+:::
+
+---
+
+## ⚖️ Interpretación y limitaciones éticas
+
+### ¿Qué aprendió el modelo?
+
+El gráfico de importancia de variables revela los rasgos del contrato que más ayudan a distinguir entre partidos. Las variables relacionadas con el monto —`log_costo` y `alto_valor`— suelen encabezar el ranking porque cada partido operó con presupuestos distintos y en sectores con estructuras de precios diferentes. Las variables temporales como `ano`, `mes_firma` y `es_diciembre` son igualmente reveladoras: los patrones estacionales de contratación difieren entre institutos políticos, y la concentración de contratos en diciembre es una señal conocida del cierre del ejercicio fiscal que cada partido maneja a su manera. La variable `es_persona_moral` y las categorías de `tipo_contrato` capturan preferencias institucionales: algunos partidos favorecen a empresas para servicios de comunicación y logística, mientras que otros recurren más a personas físicas para servicios profesionales o de consultoría. En conjunto, el modelo aprende que la huella de cada partido en sus contratos no está en un único rasgo, sino en la combinación de monto, temporalidad y tipo de proveedor.
+
+### ¿Qué tan bien funciona y para qué sirve?
+
+Con siete categorías, un clasificador aleatorio acertaría aproximadamente el 14% de las veces. Si el modelo supera el 30–40% de accuracy, eso representa una señal estadísticamente real —el doble o el triple del azar— que confirma que los contratos llevan impresa la identidad del partido que los asigna. El AUC superior a 0.5 refuerza este hallazgo: incluso para pares de partidos difíciles de distinguir (como PRI y Morena, que comparten muchos proveedores históricos), el modelo separa las distribuciones mejor que el azar. El valor práctico de este nivel de desempeño no está en etiquetar contratos individuales —la incertidumbre por contrato sería demasiado alta para eso— sino en señalar, a nivel de cohorte, qué combinaciones de características son *inusuales* para el partido que aparece como adjudicador. Es ahí donde el periodismo de datos puede enfocarse: no en el caso promedio, sino en los contratos cuya predicción contradice sistemáticamente al partido registrado.
+
+### Limitaciones metodológicas
+
+El desbalance de clases es la limitación más inmediata: Morena, PRI y PAN concentran la mayoría de los contratos, lo que hace que el modelo tenga incentivos para predecirlos con mayor frecuencia en detrimento de MC, PT y PVEM. La métrica de F1 macro evidencia este problema —cuando es notoriamente inferior a la accuracy global, confirma que el modelo falla con los partidos minoritarios aunque parezca preciso en términos generales. El riesgo de sobreajuste es real: la combinación de `step_dummy` con variables categóricas como `tipo_contrato` genera decenas de columnas binarias, algunas con muy poca frecuencia; aunque `step_nzv` elimina las más dispersas, la frontera de decisión del Random Forest puede memorizar patrones del conjunto de entrenamiento que no generalizan. Finalmente, y esto es quizás el límite más importante para la interpretación, predecir el partido no equivale a establecer causalidad. La correlación entre las características del proveedor y el partido adjudicador puede estar mediada por confusores temporales (qué partido gobernó en qué año), sectoriales (qué industria atiende cada proveedor) o regionales (dónde opera el proveedor), sin que haya una relación directa entre el proveedor y el partido.
+
+### Reflexión ética
+
+Construir este modelo tiene justificación académica y periodística, pero su comunicación pública exige una responsabilidad proporcional a los riesgos. La interpretación más peligrosa —"la inteligencia artificial puede detectar qué partido asignó cada contrato"— sugiere que el modelo actúa como detector de fraude, cuando en realidad solo identifica patrones estadísticos en datos históricos. Un proveedor que "se parece" estadísticamente a los proveedores de un partido específico no es, por ese hecho, sospechoso; clasificar así a empresas o personas físicas sin evidencia adicional sería discriminatorio y podría causar daño reputacional injustificado. Un segundo riesgo es el efecto de la profecía autocumplida en investigaciones periodísticas: si reporteros buscan anomalías a partir de las predicciones del modelo, podrían confirmar sesgos preexistentes en lugar de descubrir patrones genuinos. El uso responsable de este análisis requiere comunicar explícitamente los intervalos de incertidumbre del modelo, no realizar afirmaciones sobre contratos individuales, someter los hallazgos a revisión de expertos en derecho administrativo antes de publicar, y enmarcar los resultados siempre como hipótesis a investigar, no como conclusiones.
+
+---
+
+## 🔎 Uso ético de los datos y limitaciones
+
+### Sesgos presentes en este dataset
+
+Este dataset no representa todos los contratos que los partidos políticos han celebrado. Tiene tres sesgos de cobertura concretos:
+
+1. **Subregistro de Morena.** Con solo 1,009 contratos (6.7% del total), Morena está subrepresentada para un partido que gobernó el país durante la mayor parte del período 2019–2025. La magnitud del subregistro implica que el modelo aprende poco sobre los patrones de gasto de Morena, y sus predicciones para ese partido son menos confiables que para los demás.
+
+2. **618 contratos excluidos.** Los registros sin partido identificable o sin costo registrado fueron excluidos del dataset `contratos_montos.csv`. Si estos contratos tienen características sistemáticamente distintas de los incluidos —por ejemplo, contratos irregulares que deliberadamente carecen de partido registrado— su exclusión sesga el modelo hacia patrones de gasto "normal" y lo hace menos capaz de detectar irregularidades reales.
+
+3. **Heterogeneidad del período.** El dataset cubre 2019–2025, incluyendo la pandemia de COVID-19 (2020–2021), que alteró radicalmente los patrones de gasto de todas las instituciones. Un modelo entrenado sobre este período puede haber aprendido señales coyunturales de la pandemia, no patrones estructurales de cada partido.
+
+### Limitaciones técnicas y su consecuencia específica
+
+| Limitación | Consecuencia en este proyecto |
+|---|---|
+| Desbalance de clases (PVEM: 26.8%, PRI: 5.2%) | El modelo tiene incentivos para predecir PVEM con mayor frecuencia; la métrica F1 macro (0.843 < accuracy 0.871) confirma que falla más con partidos minoritarios (PRI, PRD) |
+| Variables categóricas de alta cardinalidad (`tipo_contrato`) | El `step_dummy()` genera decenas de columnas binarias; algunas pueden ser señales espurias aprendidas en el entrenamiento |
+| Ausencia de variables geográficas | El modelo no sabe en qué estado opera el proveedor, un confusor importante: partidos con fortaleza regional contratan proveedores locales |
+| Período post-pandemia incompleto (hasta 2025) | Los contratos de 2024–2025 son menos frecuentes en el dataset; el modelo puede tener menor exactitud para el período más reciente |
+
+### Implicaciones éticas del uso público de este modelo
+
+Publicar un modelo que "predice el partido de un contrato" sin estas aclaraciones crea riesgos concretos:
+
+**Riesgo 1 — Estigmatización de proveedores.** Un contrato clasificado como "atípico" por el modelo puede corresponder a un proveedor completamente legítimo que simplemente trabaja en un sector inusual para ese partido. Comunicar públicamente que un contrato "no concuerda" con el partido firmante sin evidencia adicional puede causar daño reputacional injustificado a una empresa o persona física.
+
+**Riesgo 2 — Confirmación de sesgos periodísticos.** Si las predicciones del modelo se usan para guiar investigaciones periodísticas, los reporteros pueden buscar evidencia que confirme las predicciones del modelo en lugar de buscar evidencia imparcial. Esto convierte la herramienta en un amplificador de prejuicios preexistentes.
+
+**Uso responsable recomendado:** este modelo debe usarse para priorizar la revisión de contratos por parte de auditores especializados, no para hacer afirmaciones públicas sobre contratos o proveedores individuales. La decisión de investigar debe basarse en evidencia jurídica y contable, no en una predicción estadística.
+
+---
+
+## 🖥️ Información de sesión
+
+```{r}
+#| label: session-info
+#| code-fold: true
+
+sessionInfo()
+```

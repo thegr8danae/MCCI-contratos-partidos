@@ -1,0 +1,470 @@
+---
+title: "Exploración y Comparación de Datasets — MCCI"
+subtitle: "Contratos de Partidos Políticos en México"
+author: "Proyecto Integrador"
+date: today
+date-format: "D [de] MMMM [de] YYYY"
+lang: es
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Contenido"
+    number-sections: true
+    code-fold: true
+    code-summary: "Ver código"
+    code-tools: true
+    theme:
+      light: [flatly, ../styles/mcci-theme.scss]
+    highlight-style: github
+    fig-align: center
+    fig-width: 9
+    fig-height: 6
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+# --- USO DE IA ---
+# Asistido por Claude (Anthropic). Prompt: "Crea un notebook de Quarto en R
+# para explorar y comparar dos datasets de contratos de partidos políticos MCCI"
+# Fragmentos asistidos: ajuste de colores MCCI en gráficas de distribución,
+# formato de tablas con gt.
+# -----------------
+
+library(tidyverse)
+library(janitor)
+library(skimr)
+library(gt)
+library(lubridate)
+library(knitr)
+library(scales)
+
+source("../scripts/utils.R")
+```
+
+## 📌 Introducción
+
+Este cuaderno explora los dos datasets proporcionados por **Mexicanos Contra la Corrupción y la Impunidad (MCCI)**, que contienen registros de contratos de bienes y servicios celebrados por partidos políticos en México.
+
+::: {.callout-note}
+Los datos se encuentran en la carpeta `datos/` del repositorio. **No modifiques los archivos originales**: cualquier transformación debe realizarse dentro de este notebook o en los scripts de la carpeta `scripts/`.
+:::
+
+Los objetivos de este análisis son:
+
+1. Cargar y revisar la estructura de ambos datasets
+2. Identificar las diferencias entre `contratos.csv` y `contratos_montos.csv`
+3. Explorar la calidad de los datos (valores faltantes, rangos, distribuciones)
+4. Visualizar los datos más relevantes
+
+---
+
+## 📂 Carga de datos
+
+```{r}
+#| label: cargar-datos
+
+# Cargar ambos datasets usando las funciones de utils.R
+contratos        <- cargar_contratos("../../datos/contratos.csv")
+contratos_montos <- cargar_contratos_montos("../../datos/contratos_montos.csv")
+```
+
+### Vista previa de `contratos.csv`
+
+```{r}
+#| label: preview-contratos
+
+contratos |>
+  head(5) |>
+  select(id, ano, tipo_contrato, tipo_persona, moral_razon,
+         fecha_firma, costo, partido_archivo) |>
+  gt() |>
+  tab_header(title = "contratos.csv — primeras 5 filas (columnas seleccionadas)") |>
+  fmt_number(columns = costo, sep_mark = ",", dec_mark = ".", decimals = 2) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  )
+```
+
+### Vista previa de `contratos_montos.csv`
+
+```{r}
+#| label: preview-montos
+
+contratos_montos |>
+  head(5) |>
+  select(id, ano, tipo_contrato, tipo_persona, moral_razon,
+         fecha_firma, costo, partido) |>
+  gt() |>
+  tab_header(title = "contratos_montos.csv — primeras 5 filas (columnas seleccionadas)") |>
+  fmt_number(columns = costo, sep_mark = ",", dec_mark = ".", decimals = 2) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  )
+```
+
+---
+
+## 🔍 Comparación estructural entre datasets
+
+### Dimensiones
+
+```{r}
+#| label: tabla-dimensiones
+
+tibble(
+  Dataset    = c("contratos.csv", "contratos_montos.csv"),
+  Filas      = c(nrow(contratos), nrow(contratos_montos)),
+  Columnas   = c(ncol(contratos), ncol(contratos_montos)),
+  Diferencia = c("—", sprintf("%+d filas", nrow(contratos_montos) - nrow(contratos)))
+) |>
+  gt() |>
+  tab_header(title = "Comparación de dimensiones") |>
+  fmt_number(columns = c(Filas, Columnas), sep_mark = ",", decimals = 0) |>
+  tab_style(
+    style = cell_fill(color = "#FFF3CD"),
+    locations = cells_body(rows = 2, columns = Diferencia)
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  )
+```
+
+### Columnas exclusivas
+
+```{r}
+#| label: comparar-columnas
+
+diff_cols <- comparar_columnas(contratos, contratos_montos)
+
+tibble(
+  Categoría         = c(
+    "Solo en contratos.csv",
+    "Solo en contratos_montos.csv",
+    "En ambos datasets"
+  ),
+  Columnas          = c(
+    ifelse(length(diff_cols$solo_en_df1) == 0, "—",
+           paste(diff_cols$solo_en_df1, collapse = ", ")),
+    paste(diff_cols$solo_en_df2, collapse = ", "),
+    sprintf("%d columnas compartidas", length(diff_cols$comunes))
+  )
+) |>
+  gt() |>
+  tab_header(title = "Diferencias en columnas entre datasets") |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  )
+```
+
+::: {.callout-important}
+**Diferencia clave:** `contratos_montos.csv` tiene la columna `partido` en formato estandarizado, lo que permite hacer análisis por partido directamente sin necesidad de limpiar `partido_archivo`.
+:::
+
+### Comparación de IDs
+
+```{r}
+#| label: comparar-ids
+
+diff_ids <- comparar_ids(contratos, contratos_montos)
+
+tibble(
+  Categoría    = c(
+    "IDs en contratos.csv",
+    "IDs en contratos_montos.csv",
+    "IDs comunes (en ambos)",
+    "Solo en contratos.csv",
+    "Solo en contratos_montos.csv"
+  ),
+  Cantidad     = c(
+    n_distinct(contratos$id),
+    n_distinct(contratos_montos$id),
+    length(diff_ids$ids_comunes),
+    length(diff_ids$solo_en_df1),
+    length(diff_ids$solo_en_df2)
+  )
+) |>
+  gt() |>
+  tab_header(title = "Comparación de IDs únicos") |>
+  fmt_number(columns = Cantidad, sep_mark = ",", decimals = 0) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#D4EDDA"),
+    locations = cells_body(rows = 3)
+  )
+```
+
+---
+
+## 🧹 Calidad de los datos
+
+### Valores faltantes en `contratos.csv`
+
+```{r}
+#| label: nas-contratos
+
+nas_contratos <- contar_nas(contratos)
+
+if (nrow(nas_contratos) == 0) {
+  cat("✅ No hay valores faltantes en contratos.csv")
+} else {
+  nas_contratos |>
+    gt() |>
+    tab_header(title = "Valores faltantes — contratos.csv") |>
+    fmt_number(columns = n_na, sep_mark = ",", decimals = 0) |>
+    data_color(
+      columns = pct_na,
+      palette = c("#D4EDDA", "#FFF3CD", "#F8D7DA")
+    ) |>
+    cols_label(
+      columna = "Columna",
+      n_na    = "N° faltantes",
+      pct_na  = "% faltante"
+    )
+}
+```
+
+### Valores faltantes en `contratos_montos.csv`
+
+```{r}
+#| label: nas-montos
+
+nas_montos <- contar_nas(contratos_montos)
+
+if (nrow(nas_montos) == 0) {
+  cat("✅ No hay valores faltantes en contratos_montos.csv")
+} else {
+  nas_montos |>
+    gt() |>
+    tab_header(title = "Valores faltantes — contratos_montos.csv") |>
+    fmt_number(columns = n_na, sep_mark = ",", decimals = 0) |>
+    data_color(
+      columns = pct_na,
+      palette = c("#D4EDDA", "#FFF3CD", "#F8D7DA")
+    ) |>
+    cols_label(
+      columna = "Columna",
+      n_na    = "N° faltantes",
+      pct_na  = "% faltante"
+    )
+}
+```
+
+---
+
+## 📊 Exploración descriptiva
+
+### Distribución por año
+
+```{r}
+#| label: fig-por-ano
+#| fig-cap: "Número de contratos registrados por año en ambos datasets"
+
+# Paleta MCCI con contraste suficiente para fondo blanco
+bind_rows(
+  contratos        |> count(ano) |> mutate(dataset = "contratos.csv"),
+  contratos_montos |> count(ano) |> mutate(dataset = "contratos_montos.csv")
+) |>
+  ggplot(aes(x = factor(ano), y = n, fill = dataset)) +
+  geom_col(position = "dodge", alpha = 0.92) +
+  scale_fill_manual(
+    values = c("contratos.csv" = "#0d1b2a", "contratos_montos.csv" = "#E8001C"),
+    name = "Dataset"
+  ) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title    = "Contratos por año",
+    subtitle = "Comparación entre ambos datasets",
+    x        = "Año",
+    y        = "Número de contratos",
+    caption  = "Fuente: MCCI"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text     = element_text(color = "#1e293b"),
+    legend.position = "top"
+  )
+```
+
+### Distribución por tipo de contrato
+
+```{r}
+#| label: fig-tipo-contrato
+#| fig-cap: "Tipos de contrato más frecuentes en contratos_montos.csv"
+
+# Color MCCI naranja (#F26522) con texto oscuro para garantizar legibilidad
+contratos_montos |>
+  count(tipo_contrato, sort = TRUE) |>
+  slice_max(n, n = 10) |>
+  mutate(tipo_contrato = fct_reorder(tipo_contrato, n)) |>
+  ggplot(aes(x = n, y = tipo_contrato)) +
+  geom_col(fill = "#F26522", alpha = 0.9) +
+  geom_text(aes(label = label_comma()(n)), hjust = -0.1, size = 3.5,
+            color = "#1A1A1A", fontface = "bold") +
+  scale_x_continuous(labels = label_comma(), expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title    = "Top 10 tipos de contrato",
+    subtitle = "contratos_montos.csv — MCCI",
+    x        = "Número de contratos",
+    y        = NULL,
+    caption  = "Fuente: MCCI"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text     = element_text(color = "#1e293b"),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+### Monto total por partido
+
+```{r}
+#| label: fig-monto-partido
+#| fig-cap: "Monto total de contratos por partido político (contratos_montos.csv)"
+
+# Usa la paleta institucional de partidos definida en utils.R
+contratos_montos |>
+  filter(costo > 0) |>
+  group_by(partido) |>
+  summarise(
+    monto_total = sum(costo, na.rm = TRUE),
+    .groups     = "drop"
+  ) |>
+  mutate(partido = fct_reorder(partido, monto_total)) |>
+  ggplot(aes(x = monto_total, y = partido, fill = partido)) +
+  geom_col(alpha = 0.92, show.legend = FALSE) +
+  scale_fill_manual(values = paleta_partidos) +
+  scale_x_continuous(labels = label_dollar(scale = 1e-6, big.mark = ","),
+                     name = "Monto total (millones de MXN)") +
+  labs(
+    title    = "Monto total de contratos por partido político",
+    subtitle = "Solo contratos con costo > 0 · contratos_montos.csv",
+    y        = NULL,
+    caption  = "Fuente: MCCI"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text     = element_text(color = "#1e293b"),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+### Distribución del monto de contratos
+
+```{r}
+#| label: fig-distribucion-costo
+#| fig-cap: "Distribución del logaritmo del costo de contratos (sin valores cero)"
+
+# Histograma con colores MCCI: relleno rojo (#E8001C), borde oscuro para separar barras
+# La escala logarítmica normaliza la distribución fuertemente sesgada de contratos
+contratos_montos |>
+  filter(costo > 0) |>
+  ggplot(aes(x = log10(costo))) +
+  geom_histogram(bins = 50, fill = "#E8001C", color = "#1A1A1A", alpha = 0.85,
+                 linewidth = 0.25) +
+  scale_x_continuous(
+    breaks = 3:10,
+    labels = c("$1K", "$10K", "$100K", "$1M", "$10M", "$100M", "$1B", "$10B")
+  ) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title    = "Distribución de montos de contratos (escala logarítmica)",
+    subtitle = "contratos_montos.csv — excluye contratos con costo = $0",
+    x        = "Monto del contrato",
+    y        = "Frecuencia",
+    caption  = "Fuente: MCCI"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(color = "#0d1b2a", face = "bold"),
+    plot.subtitle = element_text(color = "#64748b"),
+    axis.text     = element_text(color = "#1e293b")
+  )
+```
+
+---
+
+## ✅ Resumen ejecutivo
+
+```{r}
+#| label: resumen-final
+
+resumen <- tibble(
+  Métrica                     = c(
+    "Total de contratos (contratos.csv)",
+    "Total de contratos (contratos_montos.csv)",
+    "Diferencia de registros",
+    "Columnas adicionales en contratos_montos.csv",
+    "Periodo cubierto",
+    "Monto total registrado",
+    "Promedio por contrato",
+    "Contrato de mayor monto"
+  ),
+  Valor                       = c(
+    format(nrow(contratos), big.mark = ","),
+    format(nrow(contratos_montos), big.mark = ","),
+    sprintf("%d registros menos", nrow(contratos) - nrow(contratos_montos)),
+    "partido, H1 (índice)",
+    sprintf("%d – %d", min(contratos_montos$ano, na.rm=TRUE),
+                       max(contratos_montos$ano, na.rm=TRUE)),
+    formato_pesos(sum(contratos_montos$costo, na.rm=TRUE)),
+    formato_pesos(mean(contratos_montos$costo[contratos_montos$costo > 0],
+                       na.rm=TRUE)),
+    formato_pesos(max(contratos_montos$costo, na.rm=TRUE))
+  )
+)
+
+resumen |>
+  gt() |>
+  tab_header(
+    title    = "Resumen ejecutivo",
+    subtitle = "Datos de contratos de partidos políticos — MCCI"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels()
+  ) |>
+  tab_style(
+    style = cell_fill(color = "#EEF2FF"),
+    locations = cells_body(rows = seq(1, nrow(resumen), 2))
+  )
+```
+
+::: {.callout-tip}
+## Próximos pasos sugeridos
+
+- **Análisis temporal**: ¿Cómo ha cambiado el gasto por partido en el tiempo?
+- **Análisis de proveedores**: ¿Qué empresas concentran más contratos?
+- **Detección de anomalías**: Contratos con montos atípicamente altos o duración inusual.
+- **Cruce con otros datos**: ¿Los proveedores tienen vínculos con funcionarios del partido?
+:::
+
+---
+
+## 🖥️ Información de sesión
+
+```{r}
+#| label: session-info
+#| code-fold: true
+
+sessionInfo()
+```
