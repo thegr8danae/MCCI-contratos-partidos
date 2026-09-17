@@ -1,7 +1,7 @@
 ---
 title: "Exploración de `contratos_montos.csv`"
 subtitle: "¿Qué hay en el dataset? ¿Cómo se ve?"
-author: "Proyecto Integrador — MCCI"
+author: "Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez"
 date: today
 date-format: "D [de] MMMM [de] YYYY"
 lang: es

@@ -1,7 +1,7 @@
 # Declaración de Uso de Inteligencia Artificial
 
 **Proyecto:** MCCI — Contratos de Partidos Políticos  
-**Autor:** Oscar Verdugo Carranza  
+**Autores:** Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez  
 **Fecha:** junio de 2026
 
 ---

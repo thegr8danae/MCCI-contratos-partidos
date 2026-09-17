@@ -1,7 +1,7 @@
 ---
 title: "Exploración y Comparación de Datasets — MCCI"
 subtitle: "Contratos de Partidos Políticos en México"
-author: "Proyecto Integrador"
+author: "Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez"
 date: today
 date-format: "D [de] MMMM [de] YYYY"
 lang: es

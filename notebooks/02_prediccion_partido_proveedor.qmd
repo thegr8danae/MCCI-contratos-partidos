@@ -1,8 +1,7 @@
 ---
 title: "¿Puede un modelo predecir el partido que asigna un contrato a su proveedor?"
 subtitle: "Análisis de clasificación con características del proveedor · MCCI 2026"
-author: "Oscar Verdugo Carranza, Danae Jimenez Ramirez, Jose Francisco Garces 
-Camacho, Mauricio Sepulveda Soto"
+author: "Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez"
 date: today
 date-format: "12 [de] Junio [de] 2026"
 lang: es

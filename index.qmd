@@ -1,5 +1,6 @@
 ---
 title: "MCCI — Contratos de Partidos Políticos"
+author: "Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez"
 lang: es
 ---
 
