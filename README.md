@@ -175,6 +175,6 @@ Este proyecto utilizó **Claude (Anthropic)** para asistir en la escritura de c�
 ## Créditos
 
 - **Datos:** Mexicanos Contra la Corrupción y la Impunidad · [contralacorrupcion.mx](https://contralacorrupcion.mx)
-- **Análisis:** Oscar Verdugo Carranza
+- **Equipo:** Danae Jiménez Ramírez · Oscar Verdugo Carranza · Mauricio Sepúlveda Soto · José Francisco Garcés Camacho
 - **Asistencia de IA:** Claude (Anthropic)
 - **Herramientas:** R · tidyverse · tidymodels · Quarto · ggplot2
