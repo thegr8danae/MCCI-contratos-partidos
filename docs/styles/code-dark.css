@@ -1,0 +1,31 @@
+/* Colores de sintaxis legibles sobre el fondo oscuro de los bloques de código (paleta GitHub Dark) */
+pre.sourceCode code,
+pre.sourceCode code span { color: #e6edf3 !important; }
+pre.sourceCode code span.co,
+pre.sourceCode code span.do,
+pre.sourceCode code span.an,
+pre.sourceCode code span.cv,
+pre.sourceCode code span.in { color: #8b949e !important; font-style: italic; }
+pre.sourceCode code span.st,
+pre.sourceCode code span.ch,
+pre.sourceCode code span.ss,
+pre.sourceCode code span.vs { color: #a5d6ff !important; }
+pre.sourceCode code span.fu { color: #d2a8ff !important; }
+pre.sourceCode code span.kw,
+pre.sourceCode code span.cf,
+pre.sourceCode code span.op,
+pre.sourceCode code span.ot { color: #ff7b72 !important; }
+pre.sourceCode code span.dv,
+pre.sourceCode code span.bn,
+pre.sourceCode code span.fl,
+pre.sourceCode code span.cn,
+pre.sourceCode code span.sc,
+pre.sourceCode code span.at,
+pre.sourceCode code span.dt { color: #79c0ff !important; }
+pre.sourceCode code span.va,
+pre.sourceCode code span.bu,
+pre.sourceCode code span.im { color: #ffa657 !important; }
+pre.sourceCode code span.al,
+pre.sourceCode code span.er { color: #ffa198 !important; }
+/* números de línea */
+pre.sourceCode code > span > a::before { color: #6e7681 !important; }
