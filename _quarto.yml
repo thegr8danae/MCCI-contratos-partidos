@@ -83,3 +83,7 @@ execute:
   freeze: auto
 
 editor: visual
+
+language:
+  title-block-author-single: "Autores"
+  title-block-author-plural: "Autores"
