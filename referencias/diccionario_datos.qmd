@@ -7,7 +7,7 @@ lang: es
 
 **Proyecto:** MCCI — Contratos de Partidos Políticos  
 **Fuente:** Mexicanos Contra la Corrupción y la Impunidad  
-**Última actualización:** mayo 2026
+**Última actualización:** 9 de junio de 2026
 
 ---
 

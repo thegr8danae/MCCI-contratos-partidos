@@ -2,7 +2,7 @@
 title: "Lo que revelan los contratos de los partidos políticos"
 subtitle: "Nota ejecutiva de difusión — MCCI · Proyecto Integrador 2026"
 authors: "Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez"
-date: "06-08-2026"
+date: "2026-06-09"
 lang: es
 format:
   html:

@@ -2,7 +2,7 @@
 
 **Proyecto:** MCCI — Contratos de Partidos Políticos  
 **Autores:** Oscar Verdugo Carranza, Mauricio Sepúlveda Soto, José Francisco Garcés Camacho y Danae Jiménez Ramírez  
-**Fecha:** junio de 2026
+**Fecha:** 9 de junio de 2026
 
 ---
 
