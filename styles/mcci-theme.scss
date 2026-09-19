@@ -831,3 +831,6 @@ pre.sourceCode code span.im { color: #ffa657 !important; }
 pre.sourceCode code span.al,
 pre.sourceCode code span.er { color: #ffa198 !important; }
 pre.sourceCode code > span > a::before { color: #6e7681 !important; }
+
+// Desplazamiento suave nativo (conserva la posición al regresar)
+html { scroll-behavior: smooth; }

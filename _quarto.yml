@@ -72,7 +72,7 @@ format:
     fig-width: 9
     fig-height: 6
     fig-dpi: 150
-    smooth-scroll: true
+    smooth-scroll: false
     anchor-sections: true
     page-layout: article
 
